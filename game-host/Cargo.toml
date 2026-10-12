@@ -1,0 +1,34 @@
+[package]
+name = "muguet-engine"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+publish = false
+
+[features]
+default = ["jit"]
+compiler = ["jit", "wasmtime/all-arch"]
+jit = ["wasmtime/cranelift", "wasmtime/parallel-compilation", "dep:wasmparser", "dep:wasm-encoder"]
+
+[dependencies]
+wasmtime = { version = "=49.0.2", default-features = false, features = ["std", "runtime", "threads", "anyhow"] }
+anyhow = "1"
+libc = "0.2"
+serde_json = "1"
+wgpu = { version = "30.0.1", default-features = false, features = ["std", "vulkan", "wgsl"] }
+pollster = "0.4"
+regex = "1"
+cpal = "0.18.2"
+wasmparser = { version = "0.258.3", optional = true }
+wasm-encoder = { version = "0.258.3", optional = true, features = ["wasmparser"] }
+bcdec_rs = "0.2.0"
+sha2 = "0.10"
+
+[dev-dependencies]
+tempfile = "3"
+wat = "1"
+
+[[bin]]
+name = "precompile-android"
+path = "src/bin/precompile-android.rs"
+required-features = ["compiler"]
