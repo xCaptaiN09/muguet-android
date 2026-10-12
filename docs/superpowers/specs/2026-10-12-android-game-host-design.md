@@ -79,8 +79,11 @@ Assets live in the app's own external files directory at `game/`; compiled
 code, saves and runtime cache live in app-private files/cache directories.
 No root or broad storage permission is needed. For this development milestone,
 install verified prepared content by USB/ADB, and install the locally compiled
-code using the debug app's run-as facility. Do not transfer until paths and free
-space have been checked. Do not overwrite unrelated phone files. Keep all
+code using the debug app's run-as facility when available. On this ROM run-as
+is denied by SELinux; stage code in the app's own external files directory, then
+have the app copy it atomically into private storage before trusted-checksum
+validation/loading. Never change SELinux or require root for this fallback.
+Do not transfer until paths and free space have been checked. Do not overwrite unrelated phone files. Keep all
 source archives on the PC; there is no hosted backup yet.
 
 ## Failure reporting and verification
