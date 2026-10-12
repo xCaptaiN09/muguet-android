@@ -102,4 +102,4 @@ validation/error paths.
 - [x] If ADB has a connected device, install and run the app and collect its report. Otherwise provide `artifacts/muguet-android-debug.apk` and explicit installation/report instructions, with phone execution marked unverified.
 - [x] Update README and roadmap with the actual verified state. Do not merge or publish the feature branch without existing authorization or a concrete user review.
 
-- [ ] Final whole-branch review and any required follow-up fixes.
+- [x] Final whole-branch review and any required follow-up fixes. Review of `8743a34..003b8e7` found no Critical or Important issues; only the documented informational lint items remain.
