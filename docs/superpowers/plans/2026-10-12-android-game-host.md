@@ -1,6 +1,6 @@
 # Android Game Host Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Integrate Muguet's real game host into Android and attempt the first game boot on the X7 Max using the verified local browser build.
 
@@ -41,7 +41,7 @@
 - `pub fn suspend(paused: bool)`, `pub fn key(code: &str, pressed: bool)`, `pub fn mouse_delta(dx: f64, dy: f64)`.
 - CLI: `precompile-android <game.wasm> <output.cwasm>` writes the compiled artifact and `<output.cwasm>.sha256` containing the hex digest plus newline, and prints machine-readable output including digest/configuration.
 
-- [ ] Write failing boundary tests before new behavior. Include missing content, ambiguous build selection, invalid dimensions, digest mismatch without native-code deserialization, and configured heap cap. Use small real Wasm fixtures where execution is needed; retain RED evidence in the report.
+- [x] Write failing boundary tests before new behavior. Include missing content, ambiguous build selection, invalid dimensions, digest mismatch without native-code deserialization, and configured heap cap. Use small real Wasm fixtures where execution is needed; retain RED evidence in the report.
 
 ```rust
 #[test]
@@ -51,11 +51,11 @@ fn rejects_untrusted_compiled_code_before_deserialization() {
 }
 ```
 
-- [ ] Import the pinned source and implement platform adaptation. Replace desktop window ownership with the opaque surface owner, select Vulkan, gate Apple scheduling/memory APIs, use target-correct libc resource limits, and use an Android audio backend. Threaded GPU initialization errors/traps update session failure; do not leave a falsely healthy drain loop. Guest process exit becomes a reported engine exit rather than terminating the Android launcher.
-- [ ] Implement identical Android compiler/runtime configuration and patched-module compilation, content discovery, typed launch/session gates and checksum-verified native-code loading. Preserve upstream fixes; multiplayer stays disabled for this milestone. Do not invent missing engine imports.
-- [ ] Run `source scripts/env.sh; cargo test -p muguet-engine` and a locked `cargo check -p muguet-engine --target aarch64-linux-android`. Document any Android audio context requirement for Task 2. Run formatter and covering clippy checks; report imported-source warnings separately from newly introduced errors.
-- [ ] Compile the actual verified game module using the new CLI to `~/.local/share/muguet-android/compiled/full-game-v1/game-android.cwasm`; retain its digest and timing. Use the shared project toolchain. No phone deployment in this task.
-- [ ] Self-review and commit. Write the complete report with commands, RED/GREEN evidence, cross-target result, actual compile result/digest, and concerns.
+- [x] Import the pinned source and implement platform adaptation. Replace desktop window ownership with the opaque surface owner, select Vulkan, gate Apple scheduling/memory APIs, use target-correct libc resource limits, and use an Android audio backend. Threaded GPU initialization errors/traps update session failure; do not leave a falsely healthy drain loop. Guest process exit becomes a reported engine exit rather than terminating the Android launcher.
+- [x] Implement identical Android compiler/runtime configuration and patched-module compilation, content discovery, typed launch/session gates and checksum-verified native-code loading. Preserve upstream fixes; multiplayer stays disabled for this milestone. Do not invent missing engine imports.
+- [x] Run `source scripts/env.sh; cargo test -p muguet-engine` and a locked `cargo check -p muguet-engine --target aarch64-linux-android`. Document any Android audio context requirement for Task 2. Run formatter and covering clippy checks; report imported-source warnings separately from newly introduced errors.
+- [x] Compile the actual verified game module using the new CLI to `~/.local/share/muguet-android/compiled/full-game-v1/game-android.cwasm`; retain its digest and timing. Use the shared project toolchain. No phone deployment in this task.
+- [x] Self-review and commit. Write the complete report with commands, RED/GREEN evidence, cross-target result, actual compile result/digest, and concerns.
 
 ### Task 2: Android launch path, native bridge and development installer
 
