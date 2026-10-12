@@ -8,11 +8,15 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcel;
+import android.view.DisplayCutout;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -49,24 +53,23 @@ public final class MainActivity extends Activity implements SurfaceHolder.Callba
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        if (Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
+        if (Build.VERSION.SDK_INT < 35) {
+            // Older releases can retain dark theme bar backgrounds despite the light app theme.
+            int lightBackground = getColor(android.R.color.background_light);
+            getWindow().setStatusBarColor(lightBackground);
+            getWindow().setNavigationBarColor(lightBackground);
+        }
+        if (Build.VERSION.SDK_INT >= 30) {
+            getWindow().setDecorFitsSystemWindows(false);
+        } else {
+            View decor = getWindow().getDecorView();
+            decor.setSystemUiVisibility(decor.getSystemUiVisibility()
+                    | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        }
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         int padding = dp(16);
         content.setPadding(padding, padding, padding, padding);
-        content.setOnApplyWindowInsetsListener((view, insets) -> {
-            if (Build.VERSION.SDK_INT >= 30) {
-                Insets bars = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
-                view.setPadding(padding + bars.left, padding + bars.top,
-                        padding + bars.right, padding + bars.bottom);
-            } else {
-                view.setPadding(padding + insets.getSystemWindowInsetLeft(),
-                        padding + insets.getSystemWindowInsetTop(),
-                        padding + insets.getSystemWindowInsetRight(),
-                        padding + insets.getSystemWindowInsetBottom());
-            }
-            return insets;
-        });
         content.addView(label(R.string.scope, 22));
         content.addView(label(R.string.description, 16));
         content.addView(label(R.string.delivery, 14));
@@ -90,8 +93,32 @@ public final class MainActivity extends Activity implements SurfaceHolder.Callba
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         scroll.addView(content);
-        setContentView(scroll);
-        content.requestApplyInsets();
+        // Insets belong to the fixed viewport; normal content spacing scrolls independently.
+        FrameLayout viewport = new FrameLayout(this);
+        viewport.setClipToPadding(true);
+        viewport.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
+        viewport.setOnApplyWindowInsetsListener((view, insets) -> {
+            if (Build.VERSION.SDK_INT >= 30) {
+                Insets bars = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+                view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+                WindowInsetsController controller = view.getWindowInsetsController();
+                if (controller != null) {
+                    int lightBars = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                            | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+                    controller.setSystemBarsAppearance(lightBars, lightBars);
+                }
+            } else {
+                DisplayCutout cutout = insets.getDisplayCutout();
+                view.setPadding(
+                        Math.max(insets.getSystemWindowInsetLeft(), cutout == null ? 0 : cutout.getSafeInsetLeft()),
+                        Math.max(insets.getSystemWindowInsetTop(), cutout == null ? 0 : cutout.getSafeInsetTop()),
+                        Math.max(insets.getSystemWindowInsetRight(), cutout == null ? 0 : cutout.getSafeInsetRight()),
+                        Math.max(insets.getSystemWindowInsetBottom(), cutout == null ? 0 : cutout.getSafeInsetBottom()));
+            }
+            return insets;
+        });
+        setContentView(viewport);
+        viewport.requestApplyInsets();
         if (state != null) {
             runtime = state.getString("runtime", runtime);
             // A new Activity owns a new Surface; an old frame cannot certify it.
