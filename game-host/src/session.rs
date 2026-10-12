@@ -90,12 +90,16 @@ pub fn status() -> serde_json::Value {
 pub fn suspend(paused: bool) {
     crate::gpu::SUSPENDED.store(paused, Ordering::Relaxed);
     crate::input::set_focus(!paused);
+    if paused {
+        crate::input::set_locked(false);
+    }
 }
 pub fn key(code: &str, pressed: bool) {
     crate::input::key(code, pressed, false, None, false);
 }
 pub fn mouse_delta(dx: f64, dy: f64) {
     if dx.is_finite() && dy.is_finite() {
+        crate::input::set_locked(true);
         crate::input::mouse_delta_f(dx, dy);
     }
 }

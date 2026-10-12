@@ -15,6 +15,7 @@ local.properties
 *.iml
 .DS_Store
 *.log
+__pycache__/
 
 # Credentials and signing material
 .env

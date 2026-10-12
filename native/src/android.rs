@@ -23,18 +23,21 @@ extern "C" {
     fn ANativeWindow_release(window: *mut c_void);
 }
 
-struct NativeWindow(NonNull<c_void>);
+pub(crate) struct NativeWindow(NonNull<c_void>);
 
 // SAFETY: ANativeWindow_fromSurface returns an independently acquired native
 // reference, usable from a rendering thread. Only this owner moves to the worker;
 // JNI local references/JNIEnv never leave the caller, and the pointer is not shared.
 unsafe impl Send for NativeWindow {}
+// ANativeWindow references are thread-safe native objects; the only mutation
+// through this wrapper is their final reference release after the surface drops.
+unsafe impl Sync for NativeWindow {}
 
 static GPU_WORKER: LazyLock<GpuWorker> = LazyLock::new(GpuWorker::default);
 const GPU_CALL_TIMEOUT: Duration = Duration::from_secs(8);
 
 impl NativeWindow {
-    fn acquire(env: &JNIEnv<'_>, surface: &JObject<'_>) -> anyhow::Result<Self> {
+    pub(crate) fn acquire(env: &JNIEnv<'_>, surface: &JObject<'_>) -> anyhow::Result<Self> {
         ensure!(!surface.is_null(), "Android Surface is null");
         // SAFETY: JNI arguments remain valid local references throughout this call.
         // fromSurface acquires one native reference on success, released by Drop.
@@ -42,6 +45,21 @@ impl NativeWindow {
         NonNull::new(pointer)
             .map(Self)
             .context("ANativeWindow_fromSurface failed")
+    }
+
+    pub(crate) fn create_game_surface(
+        &self,
+        instance: &wgpu::Instance,
+    ) -> anyhow::Result<wgpu::Surface<'static>> {
+        // SAFETY: the caller places this surface and an Arc owning this window
+        // in SurfaceHandoff, whose field order drops the surface first.
+        unsafe {
+            instance.create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
+                raw_display_handle: Some(AndroidDisplayHandle::new().into()),
+                raw_window_handle: AndroidNdkWindowHandle::new(self.0).into(),
+            })
+        }
+        .context("Could not create game Vulkan surface")
     }
 
     fn create_surface<'window>(

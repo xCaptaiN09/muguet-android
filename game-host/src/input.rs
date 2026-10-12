@@ -393,5 +393,9 @@ mod android_tests {
         assert!(HELD.lock().unwrap().is_empty());
         assert_eq!(key_byte(b'W').unwrap().load(Ordering::SeqCst), 0);
         assert_eq!(key_byte(0x20).unwrap().load(Ordering::SeqCst), 0);
+        crate::session::mouse_delta(3.0, 1.0);
+        assert_eq!(word(LOCKED).unwrap().load(Ordering::SeqCst), 1);
+        crate::session::suspend(true);
+        assert_eq!(word(LOCKED).unwrap().load(Ordering::SeqCst), 0);
     }
 }

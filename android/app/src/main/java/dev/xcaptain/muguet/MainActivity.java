@@ -73,6 +73,10 @@ public final class MainActivity extends Activity implements SurfaceHolder.Callba
         content.addView(label(R.string.scope, 22));
         content.addView(label(R.string.description, 16));
         content.addView(label(R.string.delivery, 14));
+        Button gameButton = new Button(this);
+        gameButton.setText(R.string.start_game);
+        gameButton.setOnClickListener(view -> startActivity(new Intent(this, GameActivity.class)));
+        content.addView(gameButton);
         surfaceView = new SurfaceView(this);
         surfaceView.setContentDescription(getString(R.string.surface_description));
         surfaceView.getHolder().addCallback(this);
