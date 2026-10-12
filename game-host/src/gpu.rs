@@ -36,6 +36,41 @@ pub static OCCLUDED: AtomicBool = AtomicBool::new(false);
 pub static SUSPENDED: AtomicBool = AtomicBool::new(false);
 
 pub static PRESENTS: AtomicU64 = AtomicU64::new(0);
+static TERMINAL: AtomicBool = AtomicBool::new(false);
+#[derive(Debug, PartialEq, Eq)]
+enum SurfaceAction {
+    Skip,
+    Reconfigure,
+    Stop,
+}
+fn unavailable_surface(status: &CurrentSurfaceTexture) -> SurfaceAction {
+    log_once(
+        "surface",
+        &format!("surface texture unavailable: {status:?}"),
+    );
+    match status {
+        CurrentSurfaceTexture::Lost => {
+            // Lost requires a new surface, not reconfiguration of this one.
+            // Restarting the isolated game process is our first-session policy.
+            crate::session::fail("GPU surface lost; restart the game process");
+            TERMINAL.store(true, Ordering::Release);
+            SurfaceAction::Stop
+        }
+        CurrentSurfaceTexture::Outdated => SurfaceAction::Reconfigure,
+        _ => SurfaceAction::Skip,
+    }
+}
+fn on_device_lost(reason: DeviceLostReason, message: String) {
+    if reason == DeviceLostReason::Destroyed && SUSPENDED.load(Ordering::Acquire) {
+        log("device destroyed during suspended lifecycle teardown");
+    } else {
+        let message = format!("GPU device lost ({reason:?}): {message}; restart the game process");
+        log(&message);
+        crate::session::fail(message);
+    }
+    // Also stop for intentional destruction; there is no usable device left.
+    TERMINAL.store(true, Ordering::Release);
+}
 
 pub fn start(mem: &SharedMemory, ring: u64, size: u64, dbg: u64) {
     if STARTED.swap(true, Ordering::SeqCst) {
@@ -1357,6 +1392,7 @@ impl Gpu {
             required_limits: adapter.limits(),
             ..Default::default()
         }))?;
+        device.set_device_lost_callback(on_device_lost);
         let errors = Arc::new(AtomicU64::new(0));
         {
             let errors = errors.clone();
@@ -1674,18 +1710,24 @@ impl Gpu {
         self.enc_epoch += 1;
     }
 
-    fn run(&mut self) -> ! {
+    fn run(&mut self) {
         let mut tail = RING_DATA as i32;
         self.hdr(1).store(tail, Ordering::SeqCst);
         self.hdr(2).store(1, Ordering::SeqCst);
         log("running");
         loop {
+            if TERMINAL.load(Ordering::Acquire) {
+                return;
+            }
             if SUSPENDED.load(Ordering::Relaxed) {
                 let _ = self.device.poll(PollType::Wait {
                     submission_index: None,
                     timeout: None,
                 });
                 while SUSPENDED.load(Ordering::Relaxed) {
+                    if TERMINAL.load(Ordering::Acquire) {
+                        return;
+                    }
                     std::thread::sleep(Duration::from_millis(50));
                 }
             }
@@ -1727,7 +1769,7 @@ impl Gpu {
         let ring_w = self.ring / 4;
         let mut since = 0u32;
         let mut executed = 0i32;
-        while tail != head {
+        while tail != head && !TERMINAL.load(Ordering::Acquire) {
             let base = ring_w + (tail as u64 >> 2);
             let op = self.u(base);
             let n = self.u(base + 1) as u64;
@@ -6321,14 +6363,14 @@ impl Gpu {
             };
             let frame = match self.surface.as_ref().unwrap().0.get_current_texture() {
                 CurrentSurfaceTexture::Success(f) | CurrentSurfaceTexture::Suboptimal(f) => Some(f),
-                other => {
-                    log_once(
-                        "surface",
-                        &format!("surface texture unavailable: {other:?}"),
-                    );
-                    self.surface_size = (0, 0);
-                    None
-                }
+                other => match unavailable_surface(&other) {
+                    SurfaceAction::Stop => return,
+                    SurfaceAction::Reconfigure => {
+                        self.surface_size = (0, 0);
+                        None
+                    }
+                    SurfaceAction::Skip => None,
+                },
             };
             if let Some(frame) = frame {
                 let view = frame.texture.create_view(&TextureViewDescriptor::default());
@@ -6488,5 +6530,84 @@ fn radar_compat(source: &str) -> Option<String> {
         None
     } else {
         Some(text)
+    }
+}
+
+#[cfg(test)]
+mod failure_tests {
+    use super::*;
+    use crate::session::{self, Phase};
+    #[test]
+    fn lost_surface_stops_renderer_with_sticky_failure() {
+        session::test_support::isolated_cases(
+            "gpu::failure_tests::lost_surface_stops_renderer_with_sticky_failure",
+            &["lost"],
+            |_| {
+                session::phase(Phase::Running);
+                assert_eq!(
+                    unavailable_surface(&CurrentSurfaceTexture::Lost),
+                    SurfaceAction::Stop
+                );
+                assert!(TERMINAL.load(Ordering::Acquire));
+                session::phase(Phase::PresentRequested);
+                let status = session::status();
+                assert_eq!(status["phase"], "failed");
+                assert!(status["error"].as_str().unwrap().contains("surface"));
+            },
+        );
+    }
+    #[test]
+    fn transient_acquisition_does_not_fail_session() {
+        session::test_support::isolated_cases(
+            "gpu::failure_tests::transient_acquisition_does_not_fail_session",
+            &["timeout", "occluded", "outdated", "validation"],
+            |case| {
+                let (status, expected) = match case {
+                    "timeout" => (CurrentSurfaceTexture::Timeout, SurfaceAction::Skip),
+                    "occluded" => (CurrentSurfaceTexture::Occluded, SurfaceAction::Skip),
+                    "outdated" => (CurrentSurfaceTexture::Outdated, SurfaceAction::Reconfigure),
+                    "validation" => (CurrentSurfaceTexture::Validation, SurfaceAction::Skip),
+                    _ => unreachable!(),
+                };
+                session::phase(Phase::Running);
+                assert_eq!(unavailable_surface(&status), expected);
+                assert!(!TERMINAL.load(Ordering::Acquire));
+                assert_eq!(session::status()["phase"], "running");
+                assert!(session::status()["error"].is_null());
+            },
+        );
+    }
+    #[test]
+    fn device_loss_stops_renderer_and_distinguishes_expected_destruction() {
+        session::test_support::isolated_cases(
+            "gpu::failure_tests::device_loss_stops_renderer_and_distinguishes_expected_destruction",
+            &[
+                "unknown active",
+                "unknown suspended",
+                "destroyed active",
+                "destroyed suspended",
+            ],
+            |case| {
+                let suspended = case.ends_with("suspended");
+                let reason = if case.starts_with("unknown") {
+                    DeviceLostReason::Unknown
+                } else {
+                    DeviceLostReason::Destroyed
+                };
+                SUSPENDED.store(suspended, Ordering::Release);
+                session::phase(Phase::Running);
+                on_device_lost(reason, "fixture device loss".into());
+                assert!(TERMINAL.load(Ordering::Acquire));
+                session::phase(Phase::PresentRequested);
+                let status = session::status();
+                if reason == DeviceLostReason::Destroyed && suspended {
+                    assert_ne!(status["phase"], "failed");
+                    assert!(status["error"].is_null());
+                } else {
+                    assert_eq!(status["phase"], "failed");
+                    assert!(status["error"].as_str().unwrap().contains("device"));
+                }
+            },
+        );
     }
 }

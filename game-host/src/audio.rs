@@ -34,6 +34,24 @@ pub fn start(ring: u64, capacity: u32) {
         .expect("spawn audio thread");
 }
 
+fn on_stream_error(error: cpal::Error) {
+    // CPAL documents these as notices for a still-active stream. Everything
+    // else needs intervention/rebuilding, which this one-session host cannot do.
+    if matches!(
+        error.kind(),
+        cpal::ErrorKind::Xrun | cpal::ErrorKind::DeviceChanged | cpal::ErrorKind::RealtimeDenied
+    ) {
+        eprintln!(
+            "[audio] recoverable stream notice ({:?}): {error}",
+            error.kind()
+        );
+    } else {
+        let message = format!("audio stream failed ({:?}): {error}", error.kind());
+        eprintln!("[audio] {message}");
+        crate::session::fail(message);
+    }
+}
+
 fn play(ring: u64, capacity: u32) -> anyhow::Result<cpal::Stream> {
     let host = cpal::default_host();
     let device = host
@@ -74,7 +92,7 @@ fn play(ring: u64, capacity: u32) -> anyhow::Result<cpal::Stream> {
             hdr(1).store(read.wrapping_add(take as u32) as i32, Ordering::SeqCst);
             hdr(3).fetch_add(1, Ordering::SeqCst);
         },
-        |e| eprintln!("[audio] stream error: {e}"),
+        on_stream_error,
         None,
     )?;
     stream.play()?;
@@ -98,4 +116,71 @@ fn play(ring: u64, capacity: u32) -> anyhow::Result<cpal::Stream> {
         }
     });
     Ok(stream)
+}
+
+#[cfg(test)]
+mod failure_tests {
+    use super::*;
+    use crate::session::{self, Phase};
+    #[test]
+    fn permanent_callback_errors_fail_session() {
+        session::test_support::isolated_cases(
+            "audio::failure_tests::permanent_callback_errors_fail_session",
+            &[
+                "disconnected",
+                "host unavailable",
+                "invalidated",
+                "backend",
+                "other",
+                "busy",
+                "permission",
+                "resources",
+                "invalid input",
+                "unsupported config",
+                "unsupported operation",
+            ],
+            |case| {
+                let kind = match case {
+                    "disconnected" => cpal::ErrorKind::DeviceNotAvailable,
+                    "host unavailable" => cpal::ErrorKind::HostUnavailable,
+                    "invalidated" => cpal::ErrorKind::StreamInvalidated,
+                    "backend" => cpal::ErrorKind::BackendError,
+                    "other" => cpal::ErrorKind::Other,
+                    "busy" => cpal::ErrorKind::DeviceBusy,
+                    "permission" => cpal::ErrorKind::PermissionDenied,
+                    "resources" => cpal::ErrorKind::ResourceExhausted,
+                    "invalid input" => cpal::ErrorKind::InvalidInput,
+                    "unsupported config" => cpal::ErrorKind::UnsupportedConfig,
+                    "unsupported operation" => cpal::ErrorKind::UnsupportedOperation,
+                    _ => unreachable!(),
+                };
+                session::phase(Phase::Running);
+                on_stream_error(cpal::Error::with_message(kind, case.to_owned()));
+                session::phase(Phase::PresentRequested);
+                let status = session::status();
+                assert_eq!(status["phase"], "failed", "{case}");
+                assert!(status["error"].as_str().unwrap().contains(case));
+            },
+        );
+    }
+    #[test]
+    fn recoverable_callback_notices_keep_session_running() {
+        session::test_support::isolated_cases(
+            "audio::failure_tests::recoverable_callback_notices_keep_session_running",
+            &["xrun", "route", "scheduling"],
+            |case| {
+                let kind = match case {
+                    "xrun" => cpal::ErrorKind::Xrun,
+                    "route" => cpal::ErrorKind::DeviceChanged,
+                    "scheduling" => cpal::ErrorKind::RealtimeDenied,
+                    _ => unreachable!(),
+                };
+                session::phase(Phase::Running);
+                on_stream_error(cpal::Error::new(kind));
+                let status = session::status();
+                assert_eq!(status["phase"], "running", "{case}");
+                assert!(status["error"].is_null());
+            },
+        );
+    }
 }

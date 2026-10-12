@@ -228,3 +228,29 @@ mod tests {
             .contains("one game session"));
     }
 }
+
+/// Each callback case needs a fresh process because real session failure is sticky.
+#[cfg(test)]
+pub(crate) mod test_support {
+    pub fn isolated_cases(test_name: &str, cases: &[&str], run: impl FnOnce(&str)) {
+        const CASE_ENV: &str = "MUGUET_TASK1_FIX_CALLBACK_CASE";
+        if let Ok(case) = std::env::var(CASE_ENV) {
+            run(&case);
+            return;
+        }
+        for case in cases {
+            let output = std::process::Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", test_name, "--nocapture"])
+                .env(CASE_ENV, case)
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "callback case {case} failed: status={}\nstdout={}\nstderr={}",
+                output.status,
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+    }
+}
