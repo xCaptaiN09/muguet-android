@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Muguet foundation</string>
+    <string name="scope">This build does not yet run GTA V.</string>
+    <string name="description">Synthetic runtime and Vulkan diagnostics only. Passing these checks does not certify game compatibility.</string>
+    <string name="delivery">Future game files: local import first; a download-as-you-play provider remains possible. Neither provider is implemented in this build.</string>
+    <string name="run_checks">Run checks</string>
+    <string name="running">Working…</string>
+    <string name="export_report">Export report</string>
+    <string name="surface_description">Vulkan test frame</string>
+    <string name="report_exported">Report exported</string>
+    <string name="export_failed">Report export failed: %1$s</string>
+    <string name="no_document_picker">No document picker is available: %1$s</string>
+</resources>

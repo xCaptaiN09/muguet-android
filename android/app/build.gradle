@@ -1,0 +1,39 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'dev.xcaptain.muguet'
+    compileSdk 36
+    buildToolsVersion '36.0.0'
+    ndkVersion '28.2.13676358'
+    defaultConfig {
+        applicationId 'dev.xcaptain.muguet'
+        minSdk 29
+        targetSdk 36
+        versionCode 1
+        versionName '0.1.0-foundation'
+        ndk { abiFilters 'arm64-v8a' }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    sourceSets.main.jniLibs.srcDir layout.buildDirectory.dir('generated/rustJni')
+    packaging { jniLibs { useLegacyPackaging = false } }
+}
+
+// JVM tests and Java/lint checks must not build or load the Rust library.
+// Native output is needed only when Android merges JNI libraries into an APK.
+def buildRust = tasks.register('buildRust', Exec) {
+    workingDir rootProject.projectDir
+    commandLine 'bash', '../scripts/build-native.sh',
+        layout.buildDirectory.dir('generated/rustJni').get().asFile.absolutePath
+}
+tasks.configureEach { task ->
+    if (task.name.matches('merge.*JniLibFolders')) { task.dependsOn buildRust }
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+    // Android's org.json unit-test stubs must never replace the real parser.
+    testImplementation 'org.json:json:20250517'
+}
