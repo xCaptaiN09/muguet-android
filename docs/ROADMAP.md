@@ -7,11 +7,17 @@ and stability milestones have been demonstrated on the phone.
 
 ## 0. Repository setup
 
+Completed: local repository, private GitHub repository, and project documentation.
+
 - Initialize the local project and Git history.
 - Create the GitHub repository under `xCaptaiN09`.
 - Document the target device and keep game files out of version control.
 
 ## 1. Compatibility APK
+
+Completed on the Realme X7 Max/API 36. Runtime probes, visible Mali-G77 Vulkan
+output, report export, and lifecycle/surface recreation were verified. See
+[device validation](DEVICE_VALIDATION.md). This does not certify GTA gameplay.
 
 Build a small ARM64 Android application before importing the game host.
 
@@ -28,6 +34,8 @@ the Realme X7 Max. Report failures explicitly; a successful test frame alone
 does not establish game compatibility.
 
 ## 2. Android host integration
+
+Next milestone. No Muguet host code or game assets have been imported yet.
 
 - Review and import the necessary Muguet code with its license and attribution.
 - Isolate Apple-specific dependencies and replace Metal backend selection.

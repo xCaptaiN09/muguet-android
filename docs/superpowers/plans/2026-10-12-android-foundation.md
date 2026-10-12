@@ -37,9 +37,9 @@ Preserve the upstream audit already committed on this branch.
 Consume the workspace manifest; do not change Cargo dependencies without
 coordinating with the controller. JNI consumes the returned object unchanged.
 
-- [ ] Write a behavior test expecting a passed report containing actual guest atomic read/write results, bounded memory growth, and cross-thread wait/notify results. A wrong expected guest value, missing notification, or successful out-of-bound growth must fail the test.
-- [ ] Run `cargo test -p muguet-android-native --test runtime_probe`; record the expected initial failure before implementing the probe.
-- [ ] Implement the shared memory64 guest using the module form below, then create per-thread Wasmtime stores over the same shared memory. Match the Wasmtime version's typed signatures and use a bounded notify retry loop to avoid a lost-wakeup race.
+- [x] Write a behavior test expecting a passed report containing actual guest atomic read/write results, bounded memory growth, and cross-thread wait/notify results. A wrong expected guest value, missing notification, or successful out-of-bound growth must fail the test.
+- [x] Run `cargo test -p muguet-android-native --test runtime_probe`; record the expected initial failure before implementing the probe.
+- [x] Implement the shared memory64 guest using the module form below, then create per-thread Wasmtime stores over the same shared memory. Match the Wasmtime version's typed signatures and use a bounded notify retry loop to avoid a lost-wakeup race.
 
 ```wat
 (module
@@ -54,8 +54,8 @@ coordinating with the controller. JNI consumes the returned object unchanged.
     local.get 0 local.get 1 memory.atomic.notify))
 ```
 
-- [ ] Return `status`, `checks`, and elapsed time, including exact observed values in each check's `details`. Convert runtime errors into failed JSON, with no fabricated results.
-- [ ] Add a host CLI that prints the report and exits nonzero when `status` is failed. Run the behavior test and CLI, format the files, and record commands and outputs in the task report.
+- [x] Return `status`, `checks`, and elapsed time, including exact observed values in each check's `details`. Convert runtime errors into failed JSON, with no fabricated results.
+- [x] Add a host CLI that prints the report and exits nonzero when `status` is failed. Run the behavior test and CLI, format the files, and record commands and outputs in the task report.
 
 ### Task 2: Android application and report export
 
@@ -68,12 +68,12 @@ files, manifest, Java app classes, resources, and Java tests.
 `bash ../scripts/build-native.sh <app-build-dir>/generated/rustJni` from the
 `android/` directory and packages that directory as `jniLibs`.
 
-- [ ] Write independent Java tests for report assembly: a failed native result must keep the combined result failed; malformed native JSON must not appear successful; pending/skipped graphics cannot certify compatibility.
-- [ ] Observe the initial failure, then implement report assembly using `org.json` with an explicit real JVM dependency for unit tests. Do not mock the JSON library.
-- [ ] Create a framework Activity with SurfaceView, Run checks, result text, and Export report controls. Use worker execution, disable repeated concurrent runs, handle surface recreation and Activity destruction, and apply system-bar insets.
-- [ ] Export actual JSON through `ACTION_CREATE_DOCUMENT` without storage permissions. Display the exact early-build scope and never show a working Play GTA button.
-- [ ] Pin the build versions from Global Constraints; package ARM64 only and add an Android 16-compatible debug manifest. Generate a Gradle 8.13 wrapper using a verified distribution checksum.
-- [ ] Run `:app:testDebugUnitTest` and Java compilation/Android lint where available. Record results; the controller performs the final APK assembly after native integration.
+- [x] Write independent Java tests for report assembly: a failed native result must keep the combined result failed; malformed native JSON must not appear successful; pending/skipped graphics cannot certify compatibility.
+- [x] Observe the initial failure, then implement report assembly using `org.json` with an explicit real JVM dependency for unit tests. Do not mock the JSON library.
+- [x] Create a framework Activity with SurfaceView, Run checks, result text, and Export report controls. Use worker execution, disable repeated concurrent runs, handle surface recreation and Activity destruction, and apply system-bar insets.
+- [x] Export actual JSON through `ACTION_CREATE_DOCUMENT` without storage permissions. Display the exact early-build scope and never show a working Play GTA button.
+- [x] Pin the build versions from Global Constraints; package ARM64 only and add an Android 16-compatible debug manifest. Generate a Gradle 8.13 wrapper using a verified distribution checksum.
+- [x] Run `:app:testDebugUnitTest` and Java compilation/Android lint where available. Record results; the controller performs the final APK assembly after native integration.
 
 ### Task 3: Vulkan renderer, JNI bridge, and native integration
 
@@ -86,17 +86,20 @@ validation/error paths.
 `Java_dev_xcaptain_muguet_NativeBridge_runRuntimeChecks` and
 `Java_dev_xcaptain_muguet_NativeBridge_renderSurface` with the spec's signatures.
 
-- [ ] Test invalid render dimensions and the error-to-JSON boundary first, then implement validation. Reject zero, negative, and oversized dimensions before resource creation.
-- [ ] Implement Vulkan adapter discovery and collect real capabilities without requiring a display surface on the host. A host probe must not claim that a frame was presented.
-- [ ] Implement the Android surface handoff using `ANativeWindow_fromSurface` and a matching release guard. Keep the acquired window alive until wgpu surface/device work is finished, including failed paths.
-- [ ] Configure the surface, submit a clear-color render pass, and present once. Return accurate adapter details, features, limits, BC texture support, and presentation result. Handle errors explicitly.
-- [ ] Implement both JNI methods with panic containment and Java-string error handling. Native failures must produce failed JSON or a Java exception, never successful placeholder text.
-- [ ] Run relevant native tests and the host GPU CLI where hardware is available. Cross-compile the Android library and record verification in the task report.
+- [x] Test invalid render dimensions and the error-to-JSON boundary first, then implement validation. Reject zero, negative, and oversized dimensions before resource creation.
+- [x] Implement Vulkan adapter discovery and collect real capabilities without requiring a display surface on the host. A host probe must not claim that a frame was presented.
+- [x] Implement the Android surface handoff using `ANativeWindow_fromSurface` and a matching release guard. Keep the acquired window alive until wgpu surface/device work is finished, including failed paths.
+- [x] Configure the surface, submit a clear-color render pass, and present once. Return accurate adapter details, features, limits, BC texture support, and presentation result. Handle errors explicitly.
+- [x] Include top-level `presented: false` for host discovery and `presented: true` only for a successful Android presentation; the app consumes this flag before declaring its combined checks passed.
+- [x] Implement both JNI methods with panic containment and Java-string error handling. Native failures must produce failed JSON or a Java exception, never successful placeholder text.
+- [x] Run relevant native tests and the host GPU CLI where hardware is available. Cross-compile the Android library and record verification in the task report.
 
 ## Integrated acceptance
 
-- [ ] Review all three task diffs for spec compliance and correctness.
-- [ ] Run `cargo fmt --all --check`, native behavior tests, Java report tests, Android lint, and `bash scripts/build-apk.sh` with the project environment selected.
-- [ ] Inspect APK contents, package/API metadata, JNI symbols, and ELF segment alignment; record the APK size and SHA-256.
-- [ ] If ADB has a connected device, install and run the app and collect its report. Otherwise provide `artifacts/muguet-android-debug.apk` and explicit installation/report instructions, with phone execution marked unverified.
-- [ ] Update README and roadmap with the actual verified state. Do not merge or publish the feature branch without existing authorization or a concrete user review.
+- [x] Review all three task diffs for spec compliance and correctness.
+- [x] Run `cargo fmt --all --check`, native behavior tests, Java report tests, Android lint, and `bash scripts/build-apk.sh` with the project environment selected.
+- [x] Inspect APK contents, package/API metadata, JNI symbols, and ELF segment alignment; record the APK size and SHA-256.
+- [x] If ADB has a connected device, install and run the app and collect its report. Otherwise provide `artifacts/muguet-android-debug.apk` and explicit installation/report instructions, with phone execution marked unverified.
+- [x] Update README and roadmap with the actual verified state. Do not merge or publish the feature branch without existing authorization or a concrete user review.
+
+- [ ] Final whole-branch review and any required follow-up fixes.

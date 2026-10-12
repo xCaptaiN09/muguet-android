@@ -57,7 +57,18 @@ from the supplied Surface, retain it until GPU work and surface teardown finish,
 and release it afterward. Validate dimensions before creating resources. Report
 the real adapter name/backend, limits, available features, and BC texture
 support. Present a colored frame; never mark presentation successful on a
-headless probe. Unavailable Vulkan hardware is an explicit failed result.
+headless probe. GPU JSON includes a top-level boolean `presented`, false for
+host discovery and true only after successful Android presentation. The app
+requires this flag to pass the combined checks. Unavailable Vulkan hardware
+is an explicit failed result.
+
+With pinned wgpu, presentation success here means a completed submission and
+presentation request without an observed API/device error. Its public API does
+not prove physical scanout; verify the visible frame separately on the phone.
+Keep GPU work and teardown behind a bounded caller-response boundary, retaining
+native-window resources until the worker actually finishes cleanup. A timeout
+must not spawn an unbounded number of in-flight GPU jobs. Check cleanup-time
+errors before deciding success.
 
 Host interface: `gpu::probe_vulkan() -> serde_json::Value`, reporting adapter
 discovery without claiming presentation. Android JNI owns the Surface handoff.
