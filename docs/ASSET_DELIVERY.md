@@ -14,6 +14,31 @@ The original reported approximately 700 MB startup download does not establish
 our Android startup size; that must be measured with the chosen runtime and
 content set.
 
+## Connection and backup requirements
+
+The user's download connection is fast; their upload connection is slower.
+Prepare future hosted assets by fetching the release directly on the server or
+cloud build machine with a resumable downloader. Avoid making a full upload
+from the user's PC the normal deployment path. A Codespace is another possible
+preparation environment, subject to its available storage and transfer limits.
+
+Keep an independent local copy of all 14 release archives, the download
+manifest, file inventory, and SHA-256 checksums. Retain the verified archives
+after extracting files for development. The current release declares
+21,192,696,051 archive bytes and 21,158,604,965 extracted mirror bytes, so keeping
+both needs about 40 GiB before other project files and working space.
+
+The development machine uses `~/.local/share/muguet-android/game-backup/` for
+retained archives and `~/.local/share/muguet-android/game-files/` for extracted
+files. These files stay outside the source repository. Checksum verification
+establishes agreement with the published inventory; Android game compatibility
+still needs a separate test.
+
+When hosting is set up, add a second durable copy in a separate storage location
+and verify recovery from it. The app's eventual asset source must be configurable
+so a removed upstream release does not prevent installation or play. The local
+copy alone is not an off-machine backup, and no hosted backup exists yet.
+
 ## Hosting candidates for later investigation
 
 [Cloudflare Pages limits](https://developers.cloudflare.com/pages/platform/limits/)
