@@ -1,0 +1,21 @@
+[package]
+name = "muguet-android-native"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.99"
+publish = false
+
+[lib]
+name = "muguet_android"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+anyhow = "1"
+pollster = "0.4"
+serde_json = "1"
+wasmtime = { version = "49", default-features = false, features = ["std", "runtime", "cranelift", "threads", "wat"] }
+wgpu = { version = "30.0.1", default-features = false, features = ["std", "vulkan", "wgsl"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.21"
+raw-window-handle = "0.6"

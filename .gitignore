@@ -1,5 +1,7 @@
 # Native and Android build output
 /target/
+/artifacts/
+/.superpowers/
 **/build/
 .gradle/
 .cxx/
