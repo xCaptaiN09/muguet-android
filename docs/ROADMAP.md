@@ -1,5 +1,10 @@
 # Android port roadmap
 
+End goal: GTA V running locally on the Realme X7 Max, with an interactive world,
+touch controls, audio, and offline single-player gameplay after installation.
+Diagnostics support this goal; the project is complete only when the gameplay
+and stability milestones have been demonstrated on the phone.
+
 ## 0. Repository setup
 
 - Initialize the local project and Git history.

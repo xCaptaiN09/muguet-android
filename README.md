@@ -6,6 +6,16 @@ with a WebAssembly runtime and a native graphics backend.
 
 **Status:** project initialized. There is no runnable Android port or APK yet.
 
+## End goal
+
+Run GTA V locally on an Android smartphone using the browser-build game code
+and assets, with Muguet as the starting point for the native host. The initial
+device is the Realme X7 Max. The intended result is interactive gameplay with
+touch controls, graphics, and sound, with single-player gameplay available
+offline after the game files are installed.
+
+The compatibility APK below is a development milestone toward that result.
+
 ## First milestone
 
 Build a compatibility APK that runs a small threaded WebAssembly sample and
@@ -44,6 +54,8 @@ Keep any local game files under `game-files/`, which is ignored by Git.
 ## Roadmap and upstream
 
 See [the roadmap](docs/ROADMAP.md) for milestones and acceptance checks.
+See [the upstream porting audit](docs/PORTING_AUDIT.md) for the source review
+and the role of the browser snapshot repository.
 
 This is an unofficial community project and is not affiliated with Rockstar
 Games, Take-Two, or Muguet's author. No upstream source code has been imported
