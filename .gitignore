@@ -1,0 +1,32 @@
+# Native and Android build output
+/target/
+**/build/
+.gradle/
+.cxx/
+.externalNativeBuild/
+local.properties
+*.apk
+*.aab
+
+# Editor and machine-specific files
+.idea/
+*.iml
+.DS_Store
+*.log
+
+# Credentials and signing material
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+keystore.properties
+
+# Game binaries and assets: never commit these
+/game-files/
+/game-data/
+/game.zip
+game.wasm
+game.cwasm
+*.rpf
+*.rpf.*
