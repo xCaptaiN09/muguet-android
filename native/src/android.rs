@@ -1,5 +1,6 @@
 //! JNI owns the acquired Android window for the entire GPU operation.
 use crate::gpu;
+use crate::gpu_worker::{after_cleanup, GpuErrors, GpuWorker};
 use anyhow::{bail, ensure, Context};
 use jni::{
     objects::{JClass, JObject},
@@ -12,7 +13,7 @@ use std::{
     ffi::c_void,
     panic::{catch_unwind, AssertUnwindSafe},
     ptr::{self, NonNull},
-    sync::{Arc, Mutex},
+    sync::{Arc, LazyLock},
     time::Duration,
 };
 
@@ -23,6 +24,14 @@ extern "C" {
 }
 
 struct NativeWindow(NonNull<c_void>);
+
+// SAFETY: ANativeWindow_fromSurface returns an independently acquired native
+// reference, usable from a rendering thread. Only this owner moves to the worker;
+// JNI local references/JNIEnv never leave the caller, and the pointer is not shared.
+unsafe impl Send for NativeWindow {}
+
+static GPU_WORKER: LazyLock<GpuWorker> = LazyLock::new(GpuWorker::default);
+const GPU_CALL_TIMEOUT: Duration = Duration::from_secs(8);
 
 impl NativeWindow {
     fn acquire(env: &JNIEnv<'_>, surface: &JObject<'_>) -> anyhow::Result<Self> {
@@ -58,14 +67,6 @@ impl Drop for NativeWindow {
     }
 }
 
-fn check_gpu_errors(errors: &Mutex<Vec<String>>) -> anyhow::Result<()> {
-    let errors = errors
-        .lock()
-        .map_err(|_| anyhow::anyhow!("GPU error lock poisoned"))?;
-    ensure!(errors.is_empty(), "GPU error: {}", errors.join("; "));
-    Ok(())
-}
-
 fn render_surface(
     env: &JNIEnv<'_>,
     java_surface: &JObject<'_>,
@@ -74,9 +75,20 @@ fn render_surface(
 ) -> anyhow::Result<Value> {
     // Reject invalid sizes before acquiring even the Android window.
     gpu::validate_dimensions(width, height, gpu::MAX_SURFACE_DIMENSION)?;
-    // Declared first: window drops last on success, errors, and panic unwinding.
-    // Surface teardown and every device/queue/texture reference precede release.
     let window = NativeWindow::acquire(env, java_surface)?;
+    GPU_WORKER.run(GPU_CALL_TIMEOUT, move || {
+        after_cleanup(|errors| render_window(window, width, height, errors))
+    })
+}
+
+fn render_window(
+    window: NativeWindow,
+    width: jint,
+    height: jint,
+    errors: &GpuErrors,
+) -> anyhow::Result<Value> {
+    // The owned argument drops after all locals, including on errors/panics.
+    // This worker alone owns GPU work AND potentially blocking GPU teardown.
     let instance = gpu::vulkan_instance();
     let surface = window.create_surface(&instance)?;
     let adapter = gpu::request_adapter(&instance, Some(&surface))?;
@@ -92,18 +104,13 @@ fn render_surface(
 
     // Uncaptured validation, OOM, internal and device-lost errors must fail the
     // report rather than disappear or trigger wgpu's default panic callback.
-    let errors = Arc::new(Mutex::new(Vec::new()));
-    let callback_errors = Arc::clone(&errors);
+    let callback_errors = errors.clone();
     device.on_uncaptured_error(Arc::new(move |error| {
-        if let Ok(mut errors) = callback_errors.lock() {
-            errors.push(format!("{error}"));
-        }
+        callback_errors.record(format!("{error}"));
     }));
-    let callback_errors = Arc::clone(&errors);
+    let callback_errors = errors.clone();
     device.set_device_lost_callback(move |reason, message| {
-        if let Ok(mut errors) = callback_errors.lock() {
-            errors.push(format!("Device lost ({reason:?}): {message}"));
-        }
+        callback_errors.device_lost(reason, message);
     });
 
     let capabilities = surface.get_capabilities(&adapter);
@@ -122,7 +129,7 @@ fn render_surface(
         .first()
         .context("Surface has no alpha modes")?;
     surface.configure(&device, &config);
-    check_gpu_errors(&errors)?;
+    errors.check()?;
     let (frame, suboptimal) = match surface.get_current_texture() {
         wgpu::CurrentSurfaceTexture::Success(frame) => (frame, false),
         wgpu::CurrentSurfaceTexture::Suboptimal(frame) => (frame, true),
@@ -154,7 +161,7 @@ fn render_surface(
             ..Default::default()
         });
     }
-    check_gpu_errors(&errors)?;
+    errors.check()?;
     let submission = queue.submit([encoder.finish()]);
     device
         .poll(wgpu::PollType::Wait {
@@ -162,12 +169,12 @@ fn render_surface(
             timeout: Some(Duration::from_secs(5)),
         })
         .context("Vulkan clear-color submission did not complete within five seconds")?;
-    check_gpu_errors(&errors)?;
+    errors.check()?;
     queue.present(frame);
     device
         .poll(wgpu::PollType::Poll)
         .context("Vulkan poll after presentation failed")?;
-    check_gpu_errors(&errors)?;
+    errors.check()?;
 
     let mut report = gpu::adapter_report(&adapter);
     report["presented"] = json!(true);
@@ -180,6 +187,8 @@ fn render_surface(
         "clearColor": [0.025, 0.55, 0.45, 1.0]
     });
     report["details"] = json!("Clear-color GPU work completed and wgpu presentation requested without a reported error; visible output requires device observation");
+    // Provisional result: after_cleanup checks callbacks again only after this
+    // function has dropped every GPU resource and released the acquired window.
     Ok(report)
 }
 
