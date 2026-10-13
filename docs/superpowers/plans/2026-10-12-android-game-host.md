@@ -93,3 +93,33 @@ fn rejects_untrusted_compiled_code_before_deserialization() {
 - [ ] Diagnose concrete runtime/shader/texture/memory failures with a reproduction before changing code. Delegate code fixes for review, rerun their covering checks, rebuild/reinstall and retry. Do not replace missing behavior with a synthetic success.
 - [ ] Verify basic visible game output/input/audio if boot reaches a scene, then verify background closes only the game process and launcher diagnostics still run. Otherwise record the exact trap/failure and retain its logs.
 - [ ] Update completion evidence truthfully, commit, run whole-branch review and address findings. Push the private feature branch; no main merge or public release is requested.
+
+### Task 4: Mobile controls and conservative graphics retry
+
+The October 13 device attempt rendered GTA's startup screen, then Android killed
+`:game` with `LOW_MEMORY`. The user explicitly requested controls like Muguet and
+GTA San Andreas mobile. Replace the temporary test row within the existing Java
+Views stack; retain local execution, the AOT configuration/pin, and original assets.
+
+**Files/interfaces:** `game-host/src/{session,input,pad,mp}.rs`,
+`native/src/game_android.rs`, Android `NativeBridge`, `GameActivity`, new focused
+pure-Java touch controller and Canvas overlay, their behavioral tests, version and
+control documentation. Expose mouse-button/horn input and vehicle context through
+the existing JNI/status boundary. Never regenerate guest code for host input changes.
+
+- [ ] Build a tested conservative launch argument list: textureQuality=0,
+  shaderQuality=1, grassQuality=0, reflectionQuality=0, shadowQuality=1,
+  lodScale=0.35, particleQuality=0, waterQuality=0. These are requested settings,
+  not proof that this particular guest honored them or that memory is fixed.
+- [ ] Adapt pinned Muguet `src/touch.rs` mappings to a floating left joystick,
+  simultaneous camera drag, circular original vector action icons, driving
+  context, and optional menu navigation. Use pointer IDs, a minimum 120 ms action
+  hold, safe insets, 48 dp hit targets, and complete cancellation/lifecycle release.
+- [ ] Hide technical counters during normal play, avoid literal JSON null text,
+  retain accessible diagnostics and clear loading/error states, and keep the
+  foreground game screen awake using a window flag.
+- [ ] Test real input state/mapping, multitouch and delayed-release edge cases;
+  build with the unchanged trusted code digest and review the task.
+- [ ] Install without clearing data, capture/inspect native screenshots, measure
+  the fresh session's memory/exit information, and report exactly what renders.
+  Do not certify world gameplay, controls, or an OOM fix from present counters.
