@@ -91,18 +91,20 @@ public final class GameActivity extends Activity implements SurfaceHolder.Callba
         debugButton.setMinWidth(0); debugButton.setMinimumWidth(0);
         debugButton.setMinHeight(0); debugButton.setMinimumHeight(0);
         debugButton.setPadding(0,0,0,0); debugButton.setAlpha(.7f);
-        FrameLayout.LayoutParams debugParams = new FrameLayout.LayoutParams(dp(48),dp(48),Gravity.TOP|Gravity.CENTER_HORIZONTAL);
+        // Canvas game controls use physical left/right coordinates in every locale.
+        @android.annotation.SuppressLint("RtlHardcoded")
+        FrameLayout.LayoutParams debugParams = new FrameLayout.LayoutParams(dp(48),dp(48),Gravity.TOP|Gravity.LEFT);
         debugParams.topMargin=dp(8); root.addView(debugButton,debugParams);
         debugButton.setOnClickListener(v -> { debugVisible=!debugVisible; renderStatus(); });
-        debugButton.setOnApplyWindowInsetsListener((v,insets) -> {
-            android.view.DisplayCutout cutout=insets.getDisplayCutout();
-            int safeTop=Math.max(insets.getSystemWindowInsetTop(),cutout==null?0:cutout.getSafeInsetTop());
-            int safeLeft=Math.max(insets.getSystemWindowInsetLeft(),cutout==null?0:cutout.getSafeInsetLeft());
-            int safeRight=Math.max(insets.getSystemWindowInsetRight(),cutout==null?0:cutout.getSafeInsetRight());
+        controlsView.setLayoutListener(layout -> {
             float density=getResources().getDisplayMetrics().density;
-            float width=(getResources().getDisplayMetrics().widthPixels-safeLeft-safeRight)/density;
-            debugParams.topMargin=Math.round(new MobileControlsLayout(0,safeTop/density,width,320).infoTop*density);
-            debugButton.setLayoutParams(debugParams); return insets;
+            int leftMargin=Math.round(layout.infoLeft*density);
+            int topMargin=Math.round(layout.infoTop*density);
+            if(debugParams.leftMargin!=leftMargin || debugParams.topMargin!=topMargin) {
+                debugParams.leftMargin=leftMargin;
+                debugParams.topMargin=topMargin;
+                debugButton.setLayoutParams(debugParams);
+            }
         });
         setContentView(root);
         surfaceView.requestFocus();

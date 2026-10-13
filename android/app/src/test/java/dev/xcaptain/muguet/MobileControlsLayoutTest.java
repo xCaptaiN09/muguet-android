@@ -23,6 +23,22 @@ public class MobileControlsLayoutTest {
     }
   }
   @Test
+  public void measuredBoundsKeepInfoAtSafeCenterAroundCompactBreakpoint() {
+    for (float safeWidth : new float[] {495, 496, 497}) {
+      for (float[] insets : new float[][] {{36, 0}, {0, 36}, {36, 12}}) {
+        MobileControlsLayout layout = MobileControlsLayout.fromBounds(
+            safeWidth + insets[0] + insets[1], 344, insets[0], 8, insets[1], 16);
+        // Activity applies this exact left/top placement with absolute LEFT/TOP gravity.
+        assertEquals(insets[0] + safeWidth / 2, layout.infoLeft + 24, .01);
+        assertEquals(safeWidth < 496 ? 132 : 16, layout.infoTop, .01);
+        for (MobileControlsLayout.Button button : layout.buttons)
+          assertTrue("Info overlaps " + button.action,
+              Math.hypot(button.x - (layout.infoLeft + 24), button.y - (layout.infoTop + 24))
+                  >= button.r + 24 + 8 - .1);
+      }
+    }
+  }
+  @Test
   public void compactWidthMovesOptionalInfoBelowTopRows() {
     assertEquals(132, new MobileControlsLayout(0, 8, 480, 360).infoTop, 0);
     assertEquals(16, new MobileControlsLayout(0, 8, 872, 360).infoTop, 0);

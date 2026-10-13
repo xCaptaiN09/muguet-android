@@ -16,7 +16,12 @@ final class MobileControlsLayout {
     }
   }
   final List<Button> buttons = new ArrayList<>();
-  final float infoTop;
+  final float infoLeft, infoTop;
+  static MobileControlsLayout fromBounds(
+      float measuredWidth, float measuredHeight, float left, float top, float right, float bottom) {
+    return new MobileControlsLayout(
+        left, top, measuredWidth - left - right, measuredHeight - top - bottom);
+  }
   MobileControlsLayout(float left, float top, float width, float height) {
     float right = left + width, bottom = top + height;
     add(MobileControls.Action.PRIMARY, right - 62, bottom - 64, 40);
@@ -37,6 +42,7 @@ final class MobileControlsLayout {
         MobileControls.Action.NAV_OK, MobileControls.Action.NAV_BACK};
     for (int i = 0; i < nav.length; i++)
       add(nav[i], left + width / 2 + (i - 2.5f) * 56, top + 92, 24);
+    infoLeft = left + width / 2 - 24;
     infoTop = top + (width < 496 ? 124 : 8);
   }
   private void add(MobileControls.Action action, float x, float y, float radius) {

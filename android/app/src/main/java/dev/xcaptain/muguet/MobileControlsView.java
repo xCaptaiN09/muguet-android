@@ -1,5 +1,6 @@
 package dev.xcaptain.muguet;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.*;
 import android.os.Bundle;
@@ -7,8 +8,11 @@ import android.os.SystemClock;
 import android.view.*;
 import android.view.accessibility.*;
 import java.util.*;
+import java.util.function.Consumer;
 
 /** Original vector HUD inspired by GTA mobile; geometry and touch coordinates are dp. */
+// The HUD is programmatic and needs its session controller; XML/tool inflation is not supported.
+@SuppressLint("ViewConstructor")
 final class MobileControlsView extends View {
   private static final int VIRTUAL_BASE = 100;
   private final MobileControls controls;
@@ -81,11 +85,20 @@ final class MobileControlsView extends View {
   protected void onSizeChanged(int w, int h, int oldw, int oldh) {
     layoutButtons();
   }
+  private Consumer<MobileControlsLayout> layoutListener;
+  void setLayoutListener(Consumer<MobileControlsLayout> listener) {
+    layoutListener = listener;
+    layoutButtons();
+  }
   private void layoutButtons() {
+    if (getWidth() == 0 || getHeight() == 0)
+      return;
+    MobileControlsLayout layout = MobileControlsLayout.fromBounds(
+        getWidth() / density, getHeight() / density, left, top, right, bottom);
     buttons.clear();
-    buttons.addAll(new MobileControlsLayout(
-        left, top, getWidth() / density - left - right, getHeight() / density - top - bottom)
-            .buttons);
+    buttons.addAll(layout.buttons);
+    if (layoutListener != null)
+      layoutListener.accept(layout);
     invalidate();
   }
   private boolean visible(MobileControlsLayout.Button b) {
@@ -147,9 +160,7 @@ final class MobileControlsView extends View {
     float[] stick = controls.stick();
     float hx = left + 98, hy = getHeight() / density - bottom - 88;
     circle(canvas, stick == null ? hx : stick[0], stick == null ? hy : stick[1], 58, false, false);
-    paint.setStyle(Paint.Style.FILL);
-    paint.setColor(0x66ffffff);
-    canvas.drawCircle(stick == null ? hx : stick[2], stick == null ? hy : stick[3], 26, paint);
+    circle(canvas, stick == null ? hx : stick[2], stick == null ? hy : stick[3], 26, false, true);
     for (int i = 0; i < buttons.size(); i++) {
       MobileControlsLayout.Button b = buttons.get(i);
       if (!visible(b))
@@ -164,7 +175,7 @@ final class MobileControlsView extends View {
       // Labels complement authored icons; never substitute glyphs for them.
       if (i < 5 || b.action == MobileControls.Action.MENU) {
         paint.setStyle(Paint.Style.FILL);
-        paint.setColor(0xffffffff);
+        paint.setColor(MobileControlsColors.FOREGROUND);
         paint.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         paint.setTextAlign(Paint.Align.CENTER);
         paint.setTextSize(9 * getResources().getDisplayMetrics().scaledDensity / density);
@@ -175,11 +186,11 @@ final class MobileControlsView extends View {
   }
   private void circle(Canvas c, float x, float y, float r, boolean pressed, boolean selected) {
     paint.setStyle(Paint.Style.FILL);
-    paint.setColor(pressed ? 0xaaffffff : selected ? 0x884eabb0 : 0x6533383c);
+    paint.setColor(MobileControlsColors.backing(pressed, selected));
     c.drawCircle(x, y, r, paint);
     paint.setStyle(Paint.Style.STROKE);
-    paint.setStrokeWidth(selected ? 2 : 1.3f);
-    paint.setColor(pressed ? 0xffffffff : 0xbbe9eeee);
+    paint.setStrokeWidth(pressed ? 3 : selected ? 2 : 1.3f);
+    paint.setColor(MobileControlsColors.outline(pressed, selected));
     c.drawCircle(x, y, r - 1, paint);
   }
   private void line(Canvas c, float... xy) {
@@ -190,7 +201,7 @@ final class MobileControlsView extends View {
   }
   private void icon(Canvas c, MobileControls.Action a) {
     paint.setStyle(Paint.Style.STROKE);
-    paint.setColor(0xffffffff);
+    paint.setColor(MobileControlsColors.FOREGROUND);
     paint.setStrokeWidth(2);
     paint.setStrokeCap(Paint.Cap.ROUND);
     paint.setStrokeJoin(Paint.Join.ROUND);
