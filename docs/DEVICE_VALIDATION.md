@@ -1,8 +1,9 @@
-# Realme X7 Max foundation validation
+# Realme X7 Max validation
 
 Validated on 2026-10-12 with a physical Realme X7 Max (RMX3031/cupida),
 Android 16/API 36, Mali-G77 MC9. Device serials and raw screenshots/reports are
-kept out of Git. This record covers the diagnostic foundation, not GTA V.
+kept out of Git. The first section records the diagnostic foundation; the
+October 13 game-host attempt is recorded separately below.
 
 ## Verified APK
 
@@ -82,3 +83,64 @@ until cleanup completes; repeated checks cannot accumulate extra GPU workers.
 The Wasm probe uses only two 64 KiB pages. It does not validate GTA V's memory
 footprint, engine imports, shaders, controls, or gameplay. No game frame rate,
 full-game compatibility, or final installation size has been established.
+
+## Game-host startup attempt — October 13
+
+The game-host feature branch imports Muguet
+`ddcc54f44ae2a21b8c6e43ec1c925b55b352ffbd` and uses Wasmtime 49.0.2, wgpu
+30.0.1/Vulkan, and CPAL/AAudio. Execution and asset reads are local to the phone.
+There is no remote gameplay or asset server in this test.
+
+The tested APK was version `0.2.0-game-host` / code 2, SHA-256
+`a1c527939001670707e98de75bc15e798e682e1db3e8d0355f1a408cf3d65dbe`.
+The original diagnostic APK above remains retained separately.
+
+The Android precompiled artifact is 210,804,184 bytes, SHA-256
+`d9b0341855b8a2197d8aaeb81e7bc8ae71dd6785c1168e632dc77729888631e9`.
+It was compiled for generic `aarch64-linux-android` with a matching 5 GiB heap
+cap/reservation, 64 KiB guard, non-moving shared memory, memory64 and threads.
+The actual module imports a minimum 3 GiB shared heap. The APK pins the artifact
+digest and verifies its app-private copy before deserialization.
+
+### Installed content and access
+
+All 14 original archives and all 12,482 extracted PC mirror files were
+checksum-verified and retained. The selected Android tree contains 12,156 files
+and 15,650,794,222 bytes after deliberately filtering optional content.
+
+ADB completed the selected-content transfer. A complete phone relative-path and
+file-size comparison matched the prepared PC tree with no missing, extra, or
+wrong-size files. Bounded phone SHA checks also matched the manifest, shader
+index, original 63.2 MB Wasm and 210.8 MB compiled artifact. A full phone content
+hash sweep was interrupted when the phone froze and is **not** certified.
+
+The ROM denies `run-as`; the app instead copies staged code into its private
+files directory. Initial launches failed with `EACCES` because ADB-created nested
+asset directories were mode 2770. Granting ordinary traversal/read access on only
+the managed asset directories allowed loading. The installer now normalizes
+these directory permissions for reused, adopted, repaired and transferred trees.
+No root, SELinux changes, broad storage permission or phone settings were used.
+
+### Observed startup and failure
+
+- The user's October 13 10:58:56 screenshot visibly shows GTA V's actual
+  legal/startup screen. This confirms real game rendering on the physical phone.
+- A final exported status recorded `present_requested`, 504 presents,
+  zero observed GPU validation errors, and a 3,221,225,472-byte guest heap.
+- Android's historical exit report records the foreground `:game` process
+  killed at 10:59:09 with reason 3, `LOW_MEMORY`, and RSS reported as 2.9 GB.
+- A subsequent user retry ended at 11:06:46 with the same `LOW_MEMORY` reason,
+  RSS reported as 2.2 GB, and a last exported count of 670 presents.
+- Native logs contain audio mixer output and world/resource streaming activity.
+  These do not establish audible output or a visibly interactive world.
+
+The process RSS samples and final Android exit values are snapshots, not measured
+allocation peaks. The 3 GiB guest heap size is its addressable memory, not the
+same metric as resident RAM. Presentation rates during startup are not sustained
+gameplay FPS. Exported status files persist after process death and must not be
+mistaken for a currently running session.
+
+A conservative graphics preset and proper mobile controls are the next test.
+Their effectiveness must be demonstrated in a fresh session. Playable-world
+rendering, movement, vehicle actions, audible sound, save handling and sustained
+stability remain unverified.

@@ -35,7 +35,10 @@ does not establish game compatibility.
 
 ## 2. Android host integration
 
-Next milestone. No Muguet host code or game assets have been imported yet.
+Implemented on the game-host feature branch: reusable Muguet host, Vulkan,
+Android-targeted precompiled code with checksum verification, AAudio, local
+asset installation, logging and an isolated game process. Real startup output
+has rendered on the phone; broader compatibility is still being tested.
 
 - Review and import the necessary Muguet code with its license and attribution.
 - Isolate Apple-specific dependencies and replace Metal backend selection.
@@ -49,7 +52,10 @@ with synthetic fixtures before game assets are used.
 
 ## 3. First game boot
 
-Requires the browser-build game files supplied separately.
+In progress. Selected browser-build files and trusted Android compiled code are
+installed separately. The October 13 attempt rendered the legal/startup screen,
+then Android killed the game process for low memory. This is not yet an
+interactive-scene acceptance pass.
 
 - Import and validate `game.wasm`, `shaders/`, and `data/`.
 - Begin with a low render resolution and conservative memory settings.

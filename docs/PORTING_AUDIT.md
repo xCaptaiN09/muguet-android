@@ -1,7 +1,9 @@
 # Upstream porting audit
 
-Reviewed on 2026-10-12. This is a static code and manifest review. Neither the
-game nor an Android build has been executed.
+Initial static review: 2026-10-12. Integration update: 2026-10-13. The Android
+host now renders the game's startup screen locally; the first sessions ended
+with Android's `LOW_MEMORY` exit reason before a playable world was verified.
+See [device validation](DEVICE_VALIDATION.md) for the measured results.
 
 ## Sources reviewed
 
@@ -10,9 +12,11 @@ game nor an Android build has been executed.
 - [alihammoud21/playgta5](https://github.com/alihammoud21/playgta5), commit
   `4a0d596d9b030be20811f0d5c8882f1e2ce05c07`.
 
-Both repositories were checked out separately for inspection. No upstream code,
-game binaries, game assets, or screenshots have been copied into this project.
-No release archives were downloaded and no upstream scripts were executed.
+Both repositories were checked out separately for inspection. The integration
+subsequently pinned Muguet `ddcc54f44ae2a21b8c6e43ec1c925b55b352ffbd` and imported
+the host under `game-host/` with GPL attribution. Fourteen release archives and
+the complete extracted mirror were downloaded, checksum-verified, and retained
+outside Git. Game binaries/assets and raw device screenshots remain outside Git.
 
 ## What the supplied screenshots show
 
@@ -36,8 +40,9 @@ inventory and release manifest describe the separately distributed snapshot.
 
 The published inventory describes 12,482 mirror files totaling 21,158,604,965
 bytes (about 21.2 GB / 19.7 GiB). Summing the inventory entries reproduced both
-totals. This checks the inventory's internal consistency, not the downloadable
-files themselves.
+totals. The initial audit checked the inventory's internal consistency. Subsequent
+PC verification matched all 14 downloaded archives and all 12,482 extracted files
+against the retained checksums/inventory.
 
 Relevant inventory entries are:
 
@@ -47,9 +52,9 @@ Relevant inventory entries are:
 | `b/8b0b5899ed/shaders/index.json` | 685,955 bytes |
 | `data/manifest.json` | 393,014 bytes |
 
-These paths match the layout checked by Muguet's `src/import.rs`. That makes
-this snapshot a candidate input for a future game test; actual runtime and
-shader compatibility remain unverified.
+These paths match the layout checked by Muguet's `src/import.rs`. This snapshot
+has since supplied the actual Android startup test. Startup shaders render;
+full world/shader compatibility remains unverified.
 
 ## Confirmed Android porting work
 
