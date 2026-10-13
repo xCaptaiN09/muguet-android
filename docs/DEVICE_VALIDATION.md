@@ -144,3 +144,32 @@ A conservative graphics preset and proper mobile controls are the next test.
 Their effectiveness must be demonstrated in a fresh session. Playable-world
 rendering, movement, vehicle actions, audible sound, save handling and sustained
 stability remain unverified.
+
+## First visible open world — October 13 follow-up
+
+Installed version `0.3.0-mobile`, source `988cdfa`, APK SHA-256
+`d941256eeeb83d6a2f1ccfcff544fbba5e511e3442cfefaac3ce4bbc2d12c48e`.
+The installer reused the matching complete asset receipt and pinned code, and
+successfully applied directory permission normalization. No bulk retransfer or
+AOT recompilation was needed.
+
+The user reported reaching the open world. A subsequent timed controller run
+captured `artifacts/task-4/timed-world.png` locally: a standing character, rendered
+city buildings and plaza, the minimap and new circular touch HUD are all visible.
+This establishes real open-world rendering on the physical Realme X7 Max.
+It does not yet verify movement, simultaneous world actions, vehicle controls,
+audible sound, sustained frame rate or stability.
+
+The earlier follow-up session ended with the controller's Back command at
+12:11:04; its game exit was SIGNALED 9, and the launcher also had a LOW_MEMORY
+record. That closure is not a confirmed new foreground game OOM. The later
+timed run's game process disappeared around 55–58 seconds, before its scheduled
+85-second stop. Its exit reason remains to be retrieved after reconnection;
+do not assume that closure was the scheduled stop. The phone was disconnected
+when work was paused at the user's request.
+
+Exported status and native logs also record world-shader parsing/validation
+errors (13–17 in these runs). Renderer compatibility and memory need further
+investigation. A subsequent UI-only fix `fbbc67e` improves held-button contrast
+and inset-aware Info placement; that APK is built and locally checked, but is
+not yet installed or independently re-reviewed. See the resume checkpoint.

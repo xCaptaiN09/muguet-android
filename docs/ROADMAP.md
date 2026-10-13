@@ -57,6 +57,10 @@ installed separately. The October 13 attempt rendered the legal/startup screen,
 then Android killed the game process for low memory. This is not yet an
 interactive-scene acceptance pass.
 
+Later the conservative-preset build rendered the actual open world, character,
+city and minimap in a physical-device screenshot. Movement, audio and sustained
+stability remain pending; see [the resume checkpoint](SESSION_CHECKPOINT.md).
+
 - Import and validate `game.wasm`, `shaders/`, and `data/`.
 - Begin with a low render resolution and conservative memory settings.
 - Diagnose runtime, shader, texture, and synchronization failures.

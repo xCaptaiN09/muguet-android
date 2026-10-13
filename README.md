@@ -4,10 +4,11 @@ An experimental Android port project based on the approach used by
 [Muguet](https://github.com/c22dev/muguet): run the GTA V browser build locally
 with a WebAssembly runtime and a native graphics backend.
 
-**Status:** the Android game host renders GTA V's real startup screen locally on
-the Realme X7 Max running Android 16/API 36. Android then terminates the session
-for low memory. An interactive world and sustained gameplay are not yet verified.
-The earlier shared-memory/Vulkan diagnostic foundation remains available.
+**Status:** the Android game host renders GTA V's actual open world locally on
+the Realme X7 Max running Android 16/API 36, including the character, city and
+minimap. Mobile touch controls are implemented. Stable gameplay and world input
+are still being verified; earlier builds ended with Android low-memory kills.
+See the [resume checkpoint](docs/SESSION_CHECKPOINT.md) for current work.
 
 ## End goal
 
