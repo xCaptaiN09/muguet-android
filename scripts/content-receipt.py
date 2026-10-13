@@ -7,6 +7,7 @@ import sys
 from typing import NamedTuple
 
 MARKER = ".muguet-content-receipt"
+RESERVED_ROOT_FILES = {MARKER, MARKER + ".part"}
 MAGIC = "MUGUET_CONTENT_V1"
 CONTENT_FILES = {"data/manifest.json", "data/common/data/dlcList.xml"}
 
@@ -26,9 +27,9 @@ def describe_tree(root):
     for path in sorted(Path(root).rglob("*")):
         if path.is_symlink():
             raise ValueError(f"content tree contains symlink: {path}")
-        if not path.is_file() or path.name == MARKER:
-            continue
         relative = path.relative_to(root).as_posix()
+        if not path.is_file() or relative in RESERVED_ROOT_FILES:
+            continue
         size = path.stat().st_size
         count += 1
         total += size
@@ -41,7 +42,8 @@ def describe_tree(root):
 def compare_remote(root, lines):
     expected = {
         path.relative_to(root).as_posix(): path.stat().st_size
-        for path in Path(root).rglob("*") if path.is_file() and path.name != MARKER
+        for path in Path(root).rglob("*")
+        if path.is_file() and path.relative_to(root).as_posix() not in RESERVED_ROOT_FILES
     }
     actual = {}
     count = total = 0
@@ -51,7 +53,7 @@ def compare_remote(root, lines):
             continue
         name, raw_size = line.rsplit(" ", 1)
         name = name.removeprefix("./")
-        if Path(name).name == MARKER:
+        if name in RESERVED_ROOT_FILES:
             continue
         size = int(raw_size)
         if size < 0:

@@ -1,5 +1,6 @@
 import importlib.util
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 
@@ -46,6 +47,24 @@ class ContentReceiptTests(unittest.TestCase):
             self.assertEqual((2, 10, True), receipt.compare_remote(tree, ["./a.rpf 4\n", "./b.rpf 6\n"]))
             self.assertEqual((2, 10, False), receipt.compare_remote(tree, ["./a.rpf 4\n", "./wrong.rpf 6\n"]))
             self.assertEqual((2, 10, True), receipt.compare_remote(tree, ["./a.rpf 4\n", "./b.rpf 6\n", "./.muguet-content-receipt 80\n"]))
+
+    def test_interrupted_receipt_write_does_not_make_complete_tree_incomplete(self):
+        with tempfile.TemporaryDirectory() as root:
+            source, staged = Path(root, "source"), Path(root, "staged")
+            source.mkdir()
+            staged.mkdir()
+            (source / "asset.rpf").write_bytes(b"game")
+            shutil.copy2(source / "asset.rpf", staged / "asset.rpf")
+            (staged / ".muguet-content-receipt.part").write_bytes(b"unfinished receipt")
+            lines = [f"./{path.relative_to(staged).as_posix()} {path.stat().st_size}\n"
+                     for path in staged.rglob("*") if path.is_file()]
+            self.assertEqual((1, 4, True), receipt.compare_remote(source, lines))
+            self.assertEqual(receipt.describe_tree(source), receipt.describe_tree(staged))
+            (staged / "nested").mkdir()
+            (staged / "nested/.muguet-content-receipt.part").write_bytes(b"unrelated")
+            lines = [f"./{path.relative_to(staged).as_posix()} {path.stat().st_size}\n"
+                     for path in staged.rglob("*") if path.is_file()]
+            self.assertEqual((2, 13, False), receipt.compare_remote(source, lines))
 
 
 if __name__ == "__main__":
