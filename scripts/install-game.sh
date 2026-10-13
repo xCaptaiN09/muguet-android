@@ -2,12 +2,24 @@
 # Install this development APK and verified local game content through ADB.
 set -euo pipefail
 source "$(dirname -- "${BASH_SOURCE[0]}")/env.sh"
+mode=normal
+for option in "$@"; do
+    case "$option" in
+        --adopt-existing-assets) mode=adopt ;;
+        --repair-assets) mode=repair ;;
+        *) echo "Unknown option: $option" >&2; exit 2 ;;
+    esac
+done
+[[ "$#" -le 1 ]] || { echo "Choose one asset mode" >&2; exit 2; }
 package=dev.xcaptain.muguet
 apk="${MUGUET_ANDROID_APK:-$MUGUET_ROOT/artifacts/muguet-android-game-debug.apk}"
 content="${MUGUET_ANDROID_CONTENT:-$HOME/.local/share/muguet-android/prepared/full-game-v1}"
 code="${MUGUET_ANDROID_CODE_ARTIFACT:-$HOME/.local/share/muguet-android/compiled/full-game-v1/game-android.cwasm}"
 expected="${MUGUET_ANDROID_CODE_SHA256:-d9b0341855b8a2197d8aaeb81e7bc8ae71dd6785c1168e632dc77729888631e9}"
 external="/sdcard/Android/data/$package/files"
+receipt_tool="$MUGUET_ROOT/scripts/content-receipt.py"
+receipt_name=.muguet-content-receipt
+remote_receipt="$external/game/$receipt_name"
 
 [[ -f "$apk" && -f "$code" && -f "$content/data/manifest.json" ]] || {
     echo "Missing APK, compiler artifact, or prepared content manifest" >&2; exit 1;
@@ -34,16 +46,45 @@ adb shell pm path "$package" | tr -d '\r' | rg -q '^package:' || {
 }
 adb shell mkdir -p "$external/game" "$external/game-code"
 
-if adb shell test -f "$external/game/data/manifest.json" &&
-   adb shell test -f "$external/game/b/8b0b5899ed/shaders/index.json"; then
-    echo "Game content already staged; skipping bulk transfer"
+expected_receipt="$(python3 "$receipt_tool" describe "$content")"
+existing_receipt=""
+if adb shell test -f "$remote_receipt"; then
+    existing_receipt="$(adb shell cat "$remote_receipt" | tr -d '\r')"
+fi
+remote_summary="$(
+    adb shell "cd '$external/game' && find . -type f -exec stat -c '%n %s' {} +" |
+        python3 "$receipt_tool" compare "$content"
+)"
+read -r remote_count remote_bytes remote_matches <<<"$remote_summary"
+action="$(python3 "$receipt_tool" plan "$expected_receipt" "${existing_receipt:--}" \
+    "$remote_count" "$remote_bytes" "$remote_matches" "$mode")"
+if [[ "$action" == reuse ]]; then
+    echo "Completed game content receipt matches; skipping bulk transfer"
+elif [[ "$action" == adopt ]]; then
+    echo "Adopting existing game content after count/byte metadata check"
 else
     required_kib="$(du -sk "$content" | awk '{print $1}')"
     [[ "$available_kib" -gt "$((required_kib + 1048576))" ]] || {
         echo "Insufficient phone storage for prepared content" >&2; exit 1;
     }
-    echo "Transferring prepared content to $external/game"
-    adb push "$content/." "$external/game/"
+    echo "Transferring prepared content to $external/game ($mode)"
+    if [[ "$mode" == repair ]]; then
+        adb push --sync "$content/." "$external/game/"
+    else
+        adb push "$content/." "$external/game/"
+    fi
+    remote_summary="$(
+        adb shell "cd '$external/game' && find . -type f -exec stat -c '%n %s' {} +" |
+            python3 "$receipt_tool" compare "$content"
+    )"
+    read -r remote_count remote_bytes remote_matches <<<"$remote_summary"
+    [[ "$remote_matches" == 1 && "$remote_count" == "$(awk '{print $3}' <<<"$expected_receipt")" &&
+       "$remote_bytes" == "$(awk '{print $4}' <<<"$expected_receipt")" ]] || {
+        echo "Phone content metadata differs after transfer; no completion receipt written" >&2; exit 1;
+    }
+fi
+if [[ "$action" != reuse ]]; then
+    adb shell "printf '%s\\n' '$expected_receipt' > '$remote_receipt.part' && mv '$remote_receipt.part' '$remote_receipt'"
 fi
 
 remote_code="$external/game-code/game-android.cwasm"

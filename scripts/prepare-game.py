@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import shutil
 import tempfile
+import xml.etree.ElementTree as ET
 
 SKIP = {"env_test", "verityradio"}
 DEFAULT_SOURCE = Path.home() / ".local/share/muguet-android/game-files/full-game-v1/mirror/playgta5.com"
@@ -27,20 +28,27 @@ def filtered_manifest(source):
 
 
 def filtered_dlc(source):
-    lines = (source / DLC).read_text().splitlines(keepends=True)
-    return "".join(line for line in lines if "verityradio" not in line.lower())
+    root = ET.parse(source / DLC).getroot()
+    for parent in root.iter():
+        for item in list(parent):
+            if item.tag == "Item" and item.text and any(
+                component.lower() in SKIP
+                for component in item.text.replace("/", "\\").split("\\")
+            ):
+                parent.remove(item)
+    return ET.tostring(root, encoding="unicode")
 
 
 def prepared_valid(output, manifest, dlc):
     try:
         if json.loads((output / MANIFEST).read_text()) != manifest:
             return False
-        if (output / DLC).read_text() != dlc:
+        if ET.canonicalize((output / DLC).read_text(), strip_text=True) != ET.canonicalize(dlc, strip_text=True):
             return False
         if not any((output / "b").glob("*/shaders/index.json")):
             return False
         return all((output / "data" / item[0]).is_file() for item in manifest["files"])
-    except (OSError, ValueError):
+    except (OSError, ValueError, ET.ParseError):
         return False
 
 

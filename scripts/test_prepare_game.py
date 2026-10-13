@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 
 SCRIPT = Path(__file__).with_name("prepare-game.py")
 spec = importlib.util.spec_from_file_location("prepare_game", SCRIPT)
@@ -35,6 +36,8 @@ class PrepareGameTests(unittest.TestCase):
             self.assertFalse((output / "data/x64/VerityRADIO").exists())
             self.assertEqual(["keep.rpf"], [entry[0] for entry in json.loads((output / "data/manifest.json").read_text())["files"]])
             self.assertNotIn("verityradio", (output / "data/common/data/dlcList.xml").read_text().lower())
+            retained = ET.fromstring((output / "data/common/data/dlcList.xml").read_text())
+            self.assertEqual(["keep"], [item.text for item in retained.findall("Item")])
             self.assertEqual(before_manifest, manifest.read_bytes())
             self.assertEqual(before_dlc, dlc.read_bytes())
             self.assertNotEqual(manifest.stat().st_ino, (output / "data/manifest.json").stat().st_ino)

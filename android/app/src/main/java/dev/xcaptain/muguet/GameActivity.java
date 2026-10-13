@@ -268,11 +268,7 @@ public final class GameActivity extends Activity implements SurfaceHolder.Callba
         File logOutput = new File(externalRoot, "game-host.log");
         try (RandomAccessFile input = new RandomAccessFile(privateLog, "r");
                 FileOutputStream output = new FileOutputStream(logOutput)) {
-            long length = input.length();
-            input.seek(Math.max(0, length - LOG_EXPORT_BYTES));
-            byte[] buffer = new byte[8192];
-            int count;
-            while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+            GameLogTail.copy(input, output, LOG_EXPORT_BYTES);
         }
     }
 }

@@ -32,13 +32,23 @@ valid embedded digest, game launch fails while diagnostics remain available. The
 installed artifact is verified against that embedded digest before Wasmtime
 deserialization; an adjacent phone checksum is never trusted.
 
-The development installer checks ADB, the installed package, expected content paths,
-free space and staged code digest. It skips content and code transfers when matching
-staging already exists, and never starts the game:
+The development installer checks ADB, the installed package, free space and staged
+code digest. It writes a content identity receipt only after a successful transfer
+and complete path/size comparison. A matching receipt and a fresh path/size comparison
+skip the bulk asset transfer.
+It never starts the game:
 
 ```sh
 bash scripts/install-game.sh
 ```
+
+The existing 12,156-file external staging tree predates receipts. Adopt it deliberately
+with `bash scripts/install-game.sh --adopt-existing-assets`: this compares every relative
+path and size to the PC prepared tree without hashing 15 GB of phone content. An
+interrupted or changed tree fails adoption. Use `--repair-assets` to resume/repair
+with ADB sync and write a receipt only after the path/size map matches. The receipt
+is stored as `.muguet-content-receipt` under the app's external `game/` directory
+and is excluded from that comparison.
 
 Assets are at `/sdcard/Android/data/dev.xcaptain.muguet/files/game/`. Code stages at
 `.../files/game-code/game-android.cwasm`. On ROMs where `run-as` works, the installer

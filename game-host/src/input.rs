@@ -7,6 +7,7 @@ use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU64, AtomicU8, Ordering};
 use std::sync::{LazyLock, Mutex};
 
 static BLOCK: AtomicU64 = AtomicU64::new(0);
+static FOCUS_STATE: Mutex<bool> = Mutex::new(true);
 static SIZE: Mutex<(i32, i32)> = Mutex::new((1280, 720));
 static HELD: LazyLock<Mutex<HashSet<String>>> = LazyLock::new(|| Mutex::new(HashSet::new()));
 
@@ -48,9 +49,11 @@ pub fn publish(block: u64) {
     if let Some(e) = ext(3) {
         e.store(h, Ordering::SeqCst);
     }
+    let focus = FOCUS_STATE.lock().unwrap_or_else(|e| e.into_inner());
     if let Some(f) = word(FOCUS) {
-        f.store(1, Ordering::SeqCst);
+        f.store(*focus as i32, Ordering::SeqCst);
     }
+    drop(focus);
     if let Some(m) = word(MX) {
         m.store(w >> 1, Ordering::SeqCst);
     }
@@ -83,9 +86,12 @@ pub fn set_focus(focused: bool) {
     if !focused {
         crate::pad::release_all();
     }
+    let mut focus = FOCUS_STATE.lock().unwrap_or_else(|e| e.into_inner());
+    *focus = focused;
     if let Some(f) = word(FOCUS) {
         f.store(focused as i32, Ordering::SeqCst);
     }
+    drop(focus);
     if !focused {
         release_all();
     }
@@ -384,7 +390,11 @@ mod android_tests {
             start: std::time::Instant::now(),
         });
         assert!(crate::RT.set(rt).is_ok());
+        set_focus(false);
         publish(4096);
+        assert_eq!(word(FOCUS).unwrap().load(Ordering::SeqCst), 0);
+        set_focus(true);
+        assert_eq!(word(FOCUS).unwrap().load(Ordering::SeqCst), 1);
         key("KeyW", true, false, None, false);
         key("Space", true, false, None, false);
         assert!(HELD.lock().unwrap().contains("KeyW"));
