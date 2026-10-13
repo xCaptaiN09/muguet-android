@@ -33,9 +33,12 @@ installed artifact is verified against that embedded digest before Wasmtime
 deserialization; an adjacent phone checksum is never trusted.
 
 The development installer checks ADB, the installed package, free space and staged
-code digest. It writes a content identity receipt only after a successful transfer
-and complete path/size comparison. A matching receipt and a fresh path/size comparison
-skip the bulk asset transfer.
+code digest. It writes a content identity receipt only after a successful transfer,
+complete path/size comparison, and directory permission normalization. A matching
+receipt and a fresh path/size comparison skip the bulk asset transfer. On every
+install, including receipt reuse and adoption, it adds read/traverse permission to
+directories under external `game/data/` and `game/b/` so the app can read assets
+created by ADB. If normalization fails, installation exits before reporting ready.
 It never starts the game:
 
 ```sh

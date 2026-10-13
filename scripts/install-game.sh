@@ -83,6 +83,13 @@ else
         echo "Phone content metadata differs after transfer; no completion receipt written" >&2; exit 1;
     }
 fi
+# ADB-pushed directories can be shell-owned mode 2770. The app can read their
+# files only after every managed asset directory is traversable by its UID.
+# Do this for reused and adopted trees too, before writing a completion receipt.
+if ! adb shell "find '$external/game/data' '$external/game/b' -type d -exec chmod o+rx {} +"; then
+    echo "Cannot normalize managed game asset directory permissions; install is incomplete" >&2
+    exit 1
+fi
 if [[ "$action" != reuse ]]; then
     adb shell "printf '%s\\n' '$expected_receipt' > '$remote_receipt.part' && mv '$remote_receipt.part' '$remote_receipt'"
 fi
