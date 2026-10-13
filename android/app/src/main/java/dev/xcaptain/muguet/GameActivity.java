@@ -8,14 +8,15 @@ import android.os.Process;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
-import android.view.MotionEvent;
+import android.os.SystemClock;
+import android.view.WindowManager;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
-import android.widget.LinearLayout;
+
 import android.widget.TextView;
 
 import org.json.JSONObject;
@@ -27,7 +28,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.Set;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -43,7 +44,12 @@ public final class GameActivity extends Activity implements SurfaceHolder.Callba
     private TextView statusView;
     private boolean resumed;
     private volatile boolean stopping;
-    private float previousX, previousY;
+    private MobileControls controls;
+    private MobileControlsView controlsView;
+    private Button debugButton;
+    private boolean debugVisible, ready, focused, surfaceReady;
+    private String latestStatus;
+
     private File externalRoot;
     private File privateLog;
 
@@ -59,70 +65,58 @@ public final class GameActivity extends Activity implements SurfaceHolder.Callba
         surfaceView.getHolder().setFixedSize(WIDTH, HEIGHT);
         surfaceView.getHolder().addCallback(this);
         surfaceView.setFocusableInTouchMode(true);
-        surfaceView.setOnTouchListener((view, event) -> {
-            int action = event.getActionMasked();
-            if (action == MotionEvent.ACTION_DOWN) {
-                previousX = event.getX(); previousY = event.getY(); return true;
-            }
-            if (action == MotionEvent.ACTION_MOVE && state.acceptsInput()) {
-                float dx = event.getX() - previousX, dy = event.getY() - previousY;
-                previousX = event.getX(); previousY = event.getY();
-                worker.execute(() -> NativeBridge.gameLook(dx, dy));
-                return true;
-            }
-            return true;
-        });
         root.addView(surfaceView, new FrameLayout.LayoutParams(-1, -1));
+        controls = new MobileControls(new MobileControls.Sink() {
+            public void key(String code, boolean pressed) { NativeBridge.gameKey(code, pressed); }
+            public void mouse(int button, boolean pressed) { NativeBridge.gameMouseButton(button, pressed); }
+            public void horn(boolean pressed) { NativeBridge.gameTouchHorn(pressed); }
+            public void look(float dx, float dy) { NativeBridge.gameLook(dx, dy); }
+        });
+        controlsView = new MobileControlsView(this, controls);
+        controlsView.setRunning(false);
+        root.addView(controlsView, new FrameLayout.LayoutParams(-1,-1));
         statusView = new TextView(this);
         statusView.setText(R.string.game_status_initial);
         statusView.setTextColor(0xffffffff);
-        statusView.setBackgroundColor(0x99000000);
-        statusView.setTextSize(13);
-        statusView.setPadding(12, 8, 12, 8);
-        FrameLayout.LayoutParams statusParams = new FrameLayout.LayoutParams(-1, -2, Gravity.TOP);
+        statusView.setBackgroundColor(0xdd182126);
+        statusView.setTextSize(16);
+        statusView.setPadding(dp(20),dp(16),dp(20),dp(16));
+        statusView.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams statusParams = new FrameLayout.LayoutParams(-2,-2,Gravity.CENTER);
+        statusParams.leftMargin=dp(72); statusParams.rightMargin=dp(72);
         root.addView(statusView, statusParams);
-        LinearLayout controls = new LinearLayout(this);
-        controls.setOrientation(LinearLayout.HORIZONTAL);
-        controls.addView(control("◀", "ArrowLeft"));
-        controls.addView(control("▲", "ArrowUp"));
-        controls.addView(control("▼", "ArrowDown"));
-        controls.addView(control("▶", "ArrowRight"));
-        controls.addView(control("Enter", "Enter"));
-        controls.addView(control("Esc", "Escape"));
-        controls.addView(control("Action", "KeyE"));
-        controls.addView(control("Jump", "Space"));
-        FrameLayout.LayoutParams controlParams = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        root.addView(controls, controlParams);
+        debugButton = new Button(this);
+        debugButton.setText(R.string.game_info); debugButton.setTextSize(10);
+        debugButton.setContentDescription(getString(R.string.game_info_description));
+        debugButton.setMinWidth(0); debugButton.setMinimumWidth(0);
+        debugButton.setMinHeight(0); debugButton.setMinimumHeight(0);
+        debugButton.setPadding(0,0,0,0); debugButton.setAlpha(.7f);
+        FrameLayout.LayoutParams debugParams = new FrameLayout.LayoutParams(dp(48),dp(48),Gravity.TOP|Gravity.CENTER_HORIZONTAL);
+        debugParams.topMargin=dp(8); root.addView(debugButton,debugParams);
+        debugButton.setOnClickListener(v -> { debugVisible=!debugVisible; renderStatus(); });
+        debugButton.setOnApplyWindowInsetsListener((v,insets) -> {
+            android.view.DisplayCutout cutout=insets.getDisplayCutout();
+            int safeTop=Math.max(insets.getSystemWindowInsetTop(),cutout==null?0:cutout.getSafeInsetTop());
+            int safeLeft=Math.max(insets.getSystemWindowInsetLeft(),cutout==null?0:cutout.getSafeInsetLeft());
+            int safeRight=Math.max(insets.getSystemWindowInsetRight(),cutout==null?0:cutout.getSafeInsetRight());
+            float density=getResources().getDisplayMetrics().density;
+            float width=(getResources().getDisplayMetrics().widthPixels-safeLeft-safeRight)/density;
+            debugParams.topMargin=Math.round(new MobileControlsLayout(0,safeTop/density,width,320).infoTop*density);
+            debugButton.setLayoutParams(debugParams); return insets;
+        });
         setContentView(root);
         surfaceView.requestFocus();
     }
 
-    private Button control(String label, String code) {
-        Button button = new Button(this);
-        button.setText(label);
-        button.setTextSize(12);
-        button.setMinWidth(0);
-        button.setOnTouchListener((view, event) -> {
-            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) { sendKey(code, true); return true; }
-            if (event.getActionMasked() == MotionEvent.ACTION_UP || event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
-                sendKey(code, false); return true;
-            }
-            return true;
-        });
-        return button;
-    }
-
+    private int dp(int value) { return Math.round(value*getResources().getDisplayMetrics().density); }
     private void sendKey(String code, boolean pressed) {
-        if (pressed) {
-            if (!resumed || !state.acceptsInput()) return;
-            state.press(code);
-        } else state.release(code);
-        worker.execute(() -> NativeBridge.gameKey(code, pressed));
+        controls.hardware(code,pressed,SystemClock.uptimeMillis());
     }
-
-    private void releaseControls() {
-        Set<String> released = state.releaseAll();
-        for (String code : released) worker.execute(() -> NativeBridge.gameKey(code, false));
+    private void releaseControls() { if(controlsView!=null) controlsView.setRunning(false); }
+    private void updateInput() {
+        boolean active=resumed && focused && surfaceReady && ready && !stopping;
+        controlsView.setRunning(active);
+        NativeBridge.pauseGame(!active);
     }
 
     @Override public boolean onKeyDown(int keyCode, KeyEvent event) {
@@ -142,27 +136,40 @@ public final class GameActivity extends Activity implements SurfaceHolder.Callba
             case KeyEvent.KEYCODE_DPAD_UP: return "ArrowUp";
             case KeyEvent.KEYCODE_DPAD_DOWN: return "ArrowDown";
             case KeyEvent.KEYCODE_ENTER: case KeyEvent.KEYCODE_DPAD_CENTER: return "Enter";
-            case KeyEvent.KEYCODE_ESCAPE: case KeyEvent.KEYCODE_BACK: return "Escape";
+            case KeyEvent.KEYCODE_ESCAPE: return "Escape";
             case KeyEvent.KEYCODE_SPACE: return "Space";
             case KeyEvent.KEYCODE_E: return "KeyE";
-            default: return null;
+            case KeyEvent.KEYCODE_TAB: return "Tab";
+            case KeyEvent.KEYCODE_DEL: return "Backspace";
+            case KeyEvent.KEYCODE_SHIFT_LEFT: return "ShiftLeft";
+            case KeyEvent.KEYCODE_CTRL_LEFT: return "ControlLeft";
+            case KeyEvent.KEYCODE_ALT_LEFT: return "AltLeft";
+            default:
+                if (key >= KeyEvent.KEYCODE_A && key <= KeyEvent.KEYCODE_Z)
+                    return "Key" + (char)('A' + key-KeyEvent.KEYCODE_A);
+                if (key >= KeyEvent.KEYCODE_NUMPAD_0 && key <= KeyEvent.KEYCODE_NUMPAD_9)
+                    return "Numpad" + (key-KeyEvent.KEYCODE_NUMPAD_0);
+                return null;
         }
     }
 
     @Override public void onWindowFocusChanged(boolean focused) {
         super.onWindowFocusChanged(focused);
-        if (!focused) { releaseControls(); worker.execute(() -> NativeBridge.pauseGame(true)); }
-        else if (resumed && state.acceptsInput()) worker.execute(() -> NativeBridge.pauseGame(false));
+        this.focused=focused;
+        if(controlsView!=null) updateInput();
     }
 
-    @Override protected void onResume() { super.onResume(); resumed = true; maybeLaunch(); }
+    @Override protected void onResume() {
+        super.onResume(); resumed=true;
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        updateInput(); maybeLaunch();
+    }
     @Override protected void onPause() {
-        resumed = false;
-        releaseControls();
-        worker.execute(() -> NativeBridge.pauseGame(true));
+        resumed=false; releaseControls(); NativeBridge.pauseGame(true);
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         super.onPause();
     }
-    @Override protected void onStop() { super.onStop(); stopGameProcess(); }
+    @Override protected void onStop() { releaseControls(); super.onStop(); stopGameProcess(); }
     @Override protected void onDestroy() {
         surfaceView.getHolder().removeCallback(this);
         stopGameProcess();
@@ -180,14 +187,14 @@ public final class GameActivity extends Activity implements SurfaceHolder.Callba
         });
     }
 
-    @Override public void surfaceCreated(SurfaceHolder holder) { maybeLaunch(); }
-    @Override public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) { maybeLaunch(); }
-    @Override public void surfaceDestroyed(SurfaceHolder holder) { releaseControls(); worker.execute(() -> NativeBridge.pauseGame(true)); }
+    @Override public void surfaceCreated(SurfaceHolder holder) { surfaceReady=true; updateInput(); maybeLaunch(); }
+    @Override public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) { surfaceReady=true; updateInput(); maybeLaunch(); }
+    @Override public void surfaceDestroyed(SurfaceHolder holder) { surfaceReady=false; releaseControls(); NativeBridge.pauseGame(true); }
 
     private void maybeLaunch() {
         Surface surface = surfaceView.getHolder().getSurface();
         if (!resumed || stopping || surface == null || !surface.isValid() || !state.beginLaunch()) return;
-        statusView.setText("Preparing private game code…");
+        statusView.setText(R.string.game_preparing);
         worker.execute(() -> {
             String status;
             try {
@@ -245,14 +252,32 @@ public final class GameActivity extends Activity implements SurfaceHolder.Callba
         try { exportDebug(status); } catch (IOException error) { Log.e(TAG, "Debug export failed", error); }
         ui.post(() -> {
             if (stopping) return;
-            try {
-                JSONObject value = new JSONObject(status);
-                String line = value.optString("phase", "unknown") + "  presents=" + value.optLong("presents")
-                        + "  GPU errors=" + value.optLong("gpuErrors") + "  heap=" + value.optLong("heapBytes");
-                String error = value.optString("error", "");
-                statusView.setText(error.isEmpty() ? line : line + "\n" + error);
-            } catch (Exception error) { statusView.setText(status); }
+            latestStatus=status;
+            renderStatus();
         });
+    }
+
+    private void renderStatus() {
+        if(latestStatus==null) return;
+        try {
+            JSONObject value=new JSONObject(latestStatus);
+            String phase=value.optString("phase","unknown");
+            String error=value.isNull("error") ? "" : value.optString("error","");
+            boolean failed="failed".equals(phase);
+            boolean nextReady=!failed && ("running".equals(phase) || "present_requested".equals(phase));
+            if(ready!=nextReady) { ready=nextReady; updateInput(); }
+            controlsView.context(value.optBoolean("inVehicle",false));
+            if(failed) { releaseControls(); NativeBridge.pauseGame(true); }
+            boolean presented=value.optLong("presents")>0;
+            statusView.setVisibility(failed || !presented || debugVisible ? View.VISIBLE : View.GONE);
+            if(failed) statusView.setText(error.isEmpty()?getString(R.string.game_ended):getString(R.string.game_ended_detail,error));
+            else if(debugVisible) statusView.setText(getString(R.string.game_debug,phase,value.optLong("presents"),value.optLong("gpuErrors"),value.optLong("heapBytes")));
+            else statusView.setText(R.string.game_loading);
+        } catch(Exception error) {
+            ready=false; releaseControls(); NativeBridge.pauseGame(true);
+            statusView.setVisibility(View.VISIBLE); statusView.setText(R.string.game_status_unreadable);
+            Log.e(TAG,"Invalid game status",error);
+        }
     }
 
     private void exportDebug(String status) throws IOException {

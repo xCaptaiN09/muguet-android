@@ -20,7 +20,10 @@ mod server;
 mod session;
 use anyhow::{Context, Result};
 use platform::{engine_thread_qos, set_interactive_qos, set_qos};
-pub use session::{key, launch, mouse_delta, status, suspend, LaunchConfig, SurfaceHandoff};
+pub use session::{
+    key, launch, mouse_button, mouse_delta, status, suspend, touch_horn, LaunchConfig,
+    SurfaceHandoff,
+};
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, OnceLock};
 use std::time::Instant;

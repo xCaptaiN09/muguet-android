@@ -221,3 +221,27 @@ pub extern "system" fn Java_dev_xcaptain_muguet_NativeBridge_gameLook(
         Ok(())
     });
 }
+
+#[no_mangle]
+pub extern "system" fn Java_dev_xcaptain_muguet_NativeBridge_gameMouseButton(
+    _env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    button: jint,
+    pressed: jboolean,
+) {
+    void_boundary("gameMouseButton", || {
+        muguet_engine::mouse_button(button as usize, pressed != 0);
+        Ok(())
+    });
+}
+#[no_mangle]
+pub extern "system" fn Java_dev_xcaptain_muguet_NativeBridge_gameTouchHorn(
+    _env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    pressed: jboolean,
+) {
+    void_boundary("gameTouchHorn", || {
+        muguet_engine::touch_horn(pressed != 0);
+        Ok(())
+    });
+}

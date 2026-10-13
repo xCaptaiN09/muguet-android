@@ -969,7 +969,9 @@ pub fn script_tick(
             more_bullets(&mut c);
         }
 
-        if crate::pad::ACTIVE.load(Ordering::Relaxed) || cfg!(target_os = "ios") {
+        if crate::pad::ACTIVE.load(Ordering::Relaxed)
+            || cfg!(any(target_os = "ios", target_os = "android"))
+        {
             let ped = c.i("PlayerPedId", &[]);
             let in_car =
                 ped != 0 && c.exists(ped) && c.i("IsPedInAnyVehicle", &[i(ped), b(false)]) != 0;

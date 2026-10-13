@@ -12,4 +12,12 @@
     <string name="report_exported">Report exported</string>
     <string name="export_failed">Report export failed: %1$s</string>
     <string name="no_document_picker">No document picker is available: %1$s</string>
+    <string name="game_info">Info</string>
+    <string name="game_info_description">Show or hide game diagnostics</string>
+    <string name="game_preparing">Preparing private game code…</string>
+    <string name="game_loading">Loading local game…\nFirst startup can take a while.</string>
+    <string name="game_ended">Game session ended\nReturn and launch again to retry.</string>
+    <string name="game_ended_detail">Game session ended\n%1$s\nReturn to retry.</string>
+    <string name="game_status_unreadable">Unable to read game status. Return to retry.</string>
+    <string name="game_debug">%1$s  Presents: %2$d\nGPU errors: %3$d  Heap: %4$d\nRequested graphics: mobile-conservative-v1</string>
 </resources>

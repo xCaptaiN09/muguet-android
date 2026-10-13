@@ -64,10 +64,10 @@ permission, SELinux change, or outside server is needed.
 
 ## Status and logs
 
-The activity displays the native phase (`accepted`, `module_ready`, `running`,
-`present_requested`, or `failed`), error, presentation count, validation-error count,
-and heap bytes. It polls without blocking UI and exports each JSON snapshot to its
-own external files directory. The isolated process also redirects Rust stderr to
+The activity shows readable loading/failure and hides technical status once presentation
+begins. Its small Info toggle reveals phase, presentation count, validation-error count
+and heap bytes. Status JSON also includes `inVehicle` and the requested graphics profile.
+It polls without blocking UI and exports each JSON snapshot to its own external files directory. The isolated process also redirects Rust stderr to
 private `files/game-host.log` and exports its last 2 MiB. Read both on this ROM with:
 
 ```sh
@@ -80,5 +80,16 @@ On a ROM permitting `run-as`, the full private log can additionally be read with
 `adb exec-out run-as dev.xcaptain.muguet cat files/game-host.log > game-host-full.log`.
 The exported log is a bounded tail; the private log persists for detailed diagnosis.
 
-Directional controls, Enter, Escape, action (`E`), jump (Space), touch look drag,
-and corresponding keyboard keys are available. Focus loss releases all held inputs.
+Native Canvas mobile controls replace the provisional row. A floating left stick,
+independent camera drag, contextual fire/gas, aim/brake, jump/handbrake, enter/exit,
+reload/horn and small menu controls support simultaneous pointers. Hardware keyboard
+and Android Back remain available. Focus loss, cancellation, context/menu changes,
+pause, stop, surface loss and failed sessions release controls immediately. See
+[MOBILE_CONTROLS.md](MOBILE_CONTROLS.md) for mappings, accessibility, wheel adaptation
+and requested conservative graphics flags in version 0.3.0-mobile.
+
+Earlier device runs proved local legal/startup rendering, then Android reported
+LOW_MEMORY at 2.9 GB and 2.2 GB RSS. No playable world is verified. The graphics retry
+profile is requested and logged; it does not establish that memory pressure is fixed.
+The existing compiled artifact is reused with its embedded trusted digest; no AOT,
+heap minimum or original/hardlinked asset/settings changes are part of this retry.

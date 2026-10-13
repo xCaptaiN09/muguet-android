@@ -85,7 +85,7 @@ pub(crate) fn guard(name: &str, f: impl FnOnce()) {
 }
 pub fn status() -> serde_json::Value {
     let s = STATE.lock().unwrap_or_else(|e| e.into_inner());
-    serde_json::json!({"phase":s.0.as_str(),"error":s.1,"presents":crate::gpu::PRESENTS.load(Ordering::Relaxed),"gpuErrors":GPU_ERRORS.load(Ordering::Relaxed),"heapBytes":crate::RT.get().map(|rt|rt.mem.data_size()).unwrap_or(0)})
+    serde_json::json!({"phase":s.0.as_str(),"error":s.1,"presents":crate::gpu::PRESENTS.load(Ordering::Relaxed),"gpuErrors":GPU_ERRORS.load(Ordering::Relaxed),"inVehicle":crate::pad::IN_VEHICLE.load(Ordering::Relaxed),"requestedGraphicsProfile":"mobile-conservative-v1","heapBytes":crate::RT.get().map(|rt|rt.mem.data_size()).unwrap_or(0)})
 }
 pub fn suspend(paused: bool) {
     crate::gpu::SUSPENDED.store(paused, Ordering::Relaxed);
@@ -95,13 +95,58 @@ pub fn suspend(paused: bool) {
     }
 }
 pub fn key(code: &str, pressed: bool) {
-    crate::input::key(code, pressed, false, None, false);
+    if !pressed || crate::pad::FOCUSED.load(Ordering::Relaxed) {
+        crate::input::key(code, pressed, false, None, false);
+    }
+}
+pub fn mouse_button(dom_button: usize, pressed: bool) {
+    if matches!(dom_button, 0 | 2) && (!pressed || crate::pad::FOCUSED.load(Ordering::Relaxed)) {
+        crate::input::button(dom_button, pressed);
+    }
+}
+pub fn touch_horn(pressed: bool) {
+    crate::pad::HORN_TOUCH.store(
+        pressed && crate::pad::FOCUSED.load(Ordering::Relaxed),
+        Ordering::Relaxed,
+    );
 }
 pub fn mouse_delta(dx: f64, dy: f64) {
-    if dx.is_finite() && dy.is_finite() {
+    if crate::pad::FOCUSED.load(Ordering::Relaxed) && dx.is_finite() && dy.is_finite() {
         crate::input::set_locked(true);
         crate::input::mouse_delta_f(dx, dy);
     }
+}
+/// Requested retry preset; actual guest settings and memory use require device evidence.
+fn session_arguments(width: u32, height: u32) -> Vec<String> {
+    let mut args: Vec<String> = [
+        "./this.program",
+        "-rootdir=/game/",
+        "-nodisplaycalibration",
+        "-noSocialClub",
+        "-pc:nosocialclub",
+        "-nonetwork",
+        "-output",
+        "-forceResolution",
+        "-Script_all=warning",
+        "-replay_all=warning",
+        "-fastscriptcore",
+        "-frameLimit=2",
+        "-wasmstartchoice=2",
+        "-wgpu",
+        "-textureQuality=0",
+        "-shaderQuality=1",
+        "-grassQuality=0",
+        "-reflectionQuality=0",
+        "-shadowQuality=1",
+        "-lodScale=0.35",
+        "-particleQuality=0",
+        "-waterQuality=0",
+    ]
+    .iter()
+    .map(|s| (*s).into())
+    .collect();
+    args.extend([format!("-width={}", width), format!("-height={}", height)]);
+    args
 }
 pub fn launch(config: LaunchConfig, surface: SurfaceHandoff) -> Result<()> {
     crate::platform::validate_dimensions(config.width, config.height)?;
@@ -170,29 +215,11 @@ pub fn launch(config: LaunchConfig, surface: SurfaceHandoff) -> Result<()> {
                         .map_err(|_| anyhow::anyhow!("runtime already set"))?;
                     *crate::gpu::SURFACE.lock().unwrap() = Some(surface);
                     phase(Phase::Running);
-                    let mut args: Vec<String> = [
-                        "./this.program",
-                        "-rootdir=/game/",
-                        "-nodisplaycalibration",
-                        "-noSocialClub",
-                        "-pc:nosocialclub",
-                        "-nonetwork",
-                        "-output",
-                        "-forceResolution",
-                        "-Script_all=warning",
-                        "-replay_all=warning",
-                        "-fastscriptcore",
-                        "-frameLimit=2",
-                        "-wasmstartchoice=2",
-                        "-wgpu",
-                    ]
-                    .iter()
-                    .map(|s| (*s).into())
-                    .collect();
-                    args.extend([
-                        format!("-width={}", config.width),
-                        format!("-height={}", config.height),
-                    ]);
+                    let args = session_arguments(config.width, config.height);
+                    eprintln!(
+                        "[session] requested conservative mobile graphics profile: {}",
+                        args.join(" ")
+                    );
                     crate::run_engine(&rt, args)?;
                     anyhow::bail!("engine main returned");
                 };
@@ -211,6 +238,97 @@ pub fn launch(config: LaunchConfig, surface: SurfaceHandoff) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn mobile_profile_keeps_launch_contract_and_safe_quality_ranges() {
+        let args = session_arguments(960, 432);
+        for flag in [
+            "-width=960",
+            "-height=432",
+            "-frameLimit=2",
+            "-wasmstartchoice=2",
+            "-textureQuality=0",
+            "-shaderQuality=1",
+            "-grassQuality=0",
+            "-reflectionQuality=0",
+            "-shadowQuality=1",
+            "-lodScale=0.35",
+            "-particleQuality=0",
+            "-waterQuality=0",
+        ] {
+            assert!(args.iter().any(|a| a == flag), "missing {flag}");
+        }
+        assert!(!args
+            .iter()
+            .any(|a| a == "-shaderQuality=0" || a == "-shadowQuality=0"));
+    }
+    #[test]
+    fn touch_guest_input_and_suspend_clear_real_block() {
+        test_support::isolated_cases(
+            "session::tests::touch_guest_input_and_suspend_clear_real_block",
+            &["input"],
+            |_| {
+                let mut cfg = wasmtime::Config::new();
+                cfg.wasm_memory64(true)
+                    .wasm_threads(true)
+                    .shared_memory(true);
+                let engine = wasmtime::Engine::new(&cfg).unwrap();
+                let module =
+                    wasmtime::Module::new(&engine, wat::parse_str("(module)").unwrap()).unwrap();
+                let mem = wasmtime::SharedMemory::new(
+                    &engine,
+                    wasmtime::MemoryTypeBuilder::new()
+                        .min(1)
+                        .max(Some(1))
+                        .memory64(true)
+                        .shared(true)
+                        .build()
+                        .unwrap(),
+                )
+                .unwrap();
+                let rt = Arc::new(crate::Runtime {
+                    engine,
+                    module,
+                    mem,
+                    imports: vec![],
+                    counts: vec![],
+                    start: std::time::Instant::now(),
+                });
+                assert!(crate::RT.set(rt.clone()).is_ok());
+                crate::input::publish(1024);
+                let read = |offset: usize| unsafe {
+                    (&*(crate::mem_base_len(&rt.mem).0.add(1024 + offset)
+                        as *const std::sync::atomic::AtomicI32))
+                        .load(Ordering::SeqCst)
+                };
+                mouse_button(0, true);
+                mouse_button(2, true);
+                assert_eq!(read(276), 3);
+                mouse_button(0, false);
+                assert_eq!(read(276), 2);
+                mouse_button(9, true);
+                assert_eq!(read(276), 2);
+                key("KeyW", true);
+                touch_horn(true);
+                assert!(crate::pad::horn_held());
+                crate::pad::IN_VEHICLE.store(true, Ordering::Relaxed);
+                assert_eq!(status()["inVehicle"], true);
+                suspend(true);
+                assert_eq!(read(276), 0);
+                assert_eq!(crate::read_bytes(&rt.mem, 1024 + 0x57, 1), vec![0]);
+                assert!(!crate::pad::horn_held());
+                mouse_button(0, true);
+                touch_horn(true);
+                key("KeyW", true);
+                assert_eq!(read(276), 0);
+                assert!(!crate::pad::horn_held());
+                assert_eq!(crate::read_bytes(&rt.mem, 1024 + 0x57, 1), vec![0]);
+                suspend(false);
+                mouse_button(0, true);
+                assert_eq!(read(276), 1);
+                suspend(true);
+            },
+        );
+    }
     #[test]
     fn panic_failure_remains_visible_after_later_progress() {
         guard("fixture", || panic!("reported panic"));
