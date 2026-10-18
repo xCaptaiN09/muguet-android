@@ -25,8 +25,9 @@ and backup preparation; game bug fixing remains paused until resumed.
 ## Repository and target
 
 - Repository: <https://github.com/xCaptaiN09/muguet-android>.
-- Active source branch: `feat/android-game-host`. It is the intended public
-  landing branch. `main` contains the original initialization, not the game host.
+- Visibility: **public** (made public on October 18, 2026).
+- Active/default source branch: `feat/android-game-host`, the public landing
+  branch. `main` contains the original initialization, not the game host.
   No feature-to-main merge has been performed.
 - Target tested: Realme X7 Max / RMX3031, Dimensity 1200, Mali-G77 MC9, 8 GB RAM,
   Android 16/API 36. New ROMs and other devices need fresh validation.
@@ -141,8 +142,9 @@ and validates them. The build host used is Linux x86-64.
 19. Prepared a complete Git bundle and PC recovery kit locally. **No offsite/cloud
     backup has been uploaded or remotely recovery-verified, and no original
     game files were deleted.**
-20. Prepared the contributor README, this handoff, attribution/license metadata and
-    source-only public publication requested by the owner. The scope excludes
+20. Published the contributor README, this handoff, attribution/license metadata and
+    source-only public repository requested by the owner. Set the default branch
+    to `feat/android-game-host` without merging into `main`. The scope excludes
     private saves, raw captures, APKs and proprietary game assets.
 
 The exact current documentation commit is available from `git log -1`; this file
