@@ -8,6 +8,11 @@ safe resume order without requiring the original chat or private agent logs.
 
 ## Read this first
 
+**Final PC cleanup completed October 18:** all local project checkouts, Muguet
+tool caches, operational state and the terminal backup credential were removed
+after verification. A small `$HOME/MUGUET-RESTORE.md` is retained. Local paths
+later in this chronology are historical; restore before development.
+
 We are adapting [c22dev/Muguet](https://github.com/c22dev/muguet) to Android so a
 compatible GTA V browser build executes **on the smartphone itself**. There is
 no remote gameplay stream. Local asset reads, Wasmtime, Vulkan and AAudio are
@@ -199,6 +204,17 @@ credentials are operational data outside the source repository.
     existing local Git folder. `RESTORE.md`, `SHA256SUMS.txt` and `VERIFIED.json`
     accompany the snapshot. Temporary test/staging files were removed; the
     original local project folders remain. Later handoff-only edits are in GitHub.
+
+25. Completed the owner-requested removal of all remaining local Muguet project
+    folders after a final verified companion backup at `final-pc-snapshots/2026-10-18T112448Z`.
+    It preserves the older foundation checkout/evidence, latest all-branches
+    Git bundle, changes since the full project snapshot, operational records
+    and small upstream/NDK-link reference records. Downloadable Rust/cache
+    packages were removed without reuploading them. Independent offline
+    restores of both source branches matched every recorded file hash and
+    had clean Git state. The original game and full project snapshots remain
+    private on Bacloud. Follow the final snapshot RESTORE.md and PC-CLEARED.json
+    for the closing state. A fresh clone/restore needs no old local Git folder.
 
 The exact current documentation commit is available from `git log -1`; this file
 does not try to embed its own future commit hash.
