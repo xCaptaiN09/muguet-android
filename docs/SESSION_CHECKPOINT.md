@@ -12,6 +12,10 @@ old `.local/share/muguet-android` directory. The active worktree is now
 `$HOME/muguet-android-game-host`; small recovery records are under
 `$HOME/.local/state/muguet-android/backup-operations/2026-10-18/`. Download the
 verified private recovery kit when its compiled code or app export is needed.
+The complete current source/evidence folder also has an independently restorable
+private snapshot at `project-snapshots/2026-10-18T105520Z/` within the GTA V backup.
+Its bundle and restore guide recover the project without either local Git folder;
+the separate game payloads are still needed to run the game.
 
 Paused at the user's request after the first actual open-world screenshot.
 Private working branch: `feat/android-game-host`; no main merge or public release.

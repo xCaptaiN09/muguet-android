@@ -186,6 +186,19 @@ credentials are operational data outside the source repository.
     and a preparation receipt now live under `$HOME/.local/state/muguet-android/`.
     The final removal freed another 214,290,432 bytes. A fresh connected-phone
     check again confirmed the package and all four package data paths absent.
+24. Backed up the current active project folder separately to private Bacloud at
+    `project-snapshots/2026-10-18T105520Z/`, relative to the GTA V backup folder.
+    This snapshot pins `bfa6122` and preserves 276 regular source/evidence files
+    totaling 107,114,374 bytes, a fresh all-branches Git bundle and the small
+    operational records. Its eight uploaded payloads total 36,366,045 bytes,
+    plus a verified completion receipt. All payloads received full SHA-256
+    readback verification. An offline test cloned the bundle into an independent
+    Git repository and restored the archived worktree: every file digest and
+    symlink target matched, HEAD matched and Git remained clean. The archive
+    excludes the old linked-worktree `.git` pointer, so recovery requires neither
+    existing local Git folder. `RESTORE.md`, `SHA256SUMS.txt` and `VERIFIED.json`
+    accompany the snapshot. Temporary test/staging files were removed; the
+    original local project folders remain. Later handoff-only edits are in GitHub.
 
 The exact current documentation commit is available from `git log -1`; this file
 does not try to embed its own future commit hash.
@@ -316,6 +329,8 @@ its shared Git database. Preserve both, or make a fresh independent clone when
 reorganizing them. The old `.local/share/muguet-android` directory no longer
 exists. Its game-data, metadata and recovery-kit copies must be downloaded or
 reconstructed before use; historical paths in old logs describe the earlier layout.
+The separately verified project snapshot described above restores an independent
+checkout with its own Git database and includes the current private evidence.
 
 The private cloud copy remains verified. Its `REMOTE-RESTORE.md` explains the
 layout: 14 unmodified original ZIP parts, source metadata, PC recovery kit, Git
