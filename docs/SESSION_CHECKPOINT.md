@@ -7,6 +7,11 @@ current contributor/AI handoff, including October 18 backup and publication work
 is uninstalled and the large local assets/build caches were removed. Source,
 evidence and small recovery kits are retained. Restore content and matching AOT
 code before real-game testing. The October 13 details below are historical.
+The final cleanup also removed the remaining local recovery-kit copies and the
+old `.local/share/muguet-android` directory. The active worktree is now
+`$HOME/muguet-android-game-host`; small recovery records are under
+`$HOME/.local/state/muguet-android/backup-operations/2026-10-18/`. Download the
+verified private recovery kit when its compiled code or app export is needed.
 
 Paused at the user's request after the first actual open-world screenshot.
 Private working branch: `feat/android-game-host`; no main merge or public release.

@@ -177,6 +177,15 @@ credentials are operational data outside the source repository.
     The source checkouts, Git history, evidence, original download metadata and
     small PC/phone recovery kits remain available. The private cloud backup is
     the retained complete original asset copy; restore it before game testing.
+23. At the owner's request, removed the remaining downloadable local recovery
+    copies and the entire `.local/share/muguet-android` directory. Rechecked the
+    cloud receipt/checksum digests and all 39 payload sizes, and matched the 22
+    remaining local metadata/recovery files to their cloud hashes first. Moved
+    the clean Git worktree to `$HOME/muguet-android-game-host`, verifying that all
+    180 ignored evidence files retained identical hashes. Small recovery records
+    and a preparation receipt now live under `$HOME/.local/state/muguet-android/`.
+    The final removal freed another 214,290,432 bytes. A fresh connected-phone
+    check again confirmed the package and all four package data paths absent.
 
 The exact current documentation commit is available from `git log -1`; this file
 does not try to embed its own future commit hash.
@@ -250,7 +259,7 @@ requested arguments, not proof of settings honored or a memory fix.
    current GPU capabilities. Prior results belong to the old tested ROM. The
    October 18 cleanup removed the phone app and assets: reinstall the diagnostic
    APK first, then restore/reconstruct content and matching AOT code from the
-   retained recovery kit/private cloud backup before launching a real session.
+   downloaded recovery kit/private cloud backup before launching a real session.
 3. Check the two HUD fixes in `205b05e..fbbc67e`: readable default/pressed/selected
    colors over bright backgrounds, and the actual shared inset-aware Info geometry.
    Focused tests cover asymmetric safe widths 495/496/497 dp. Review then install
@@ -293,37 +302,32 @@ These are historical results, not a fresh test claim for an arbitrary checkout.
 
 ## Maintainer recovery data outside Git
 
-The original developer machine uses these default locations under `$HOME`.
-The large game-data directories shown below were removed after backup; their
-names describe restoration destinations, not currently populated folders.
+Current locations on the original developer machine, relative to `$HOME`:
 
 ```text
-.local/share/muguet-android/
-├── game-backup/full-game-v1/       # Original ZIPs, inventories, source archives
-├── game-files/full-game-v1/        # Extracted original mirror
-├── prepared/full-game-v1/          # Separate Android selection
-├── compiled/full-game-v1/          # Paired Android AOT code and digest
-├── worktrees/game-host/            # Existing game-host checkout
-├── offsite-staging/2026-10-18/      # Verified local recovery snapshot
-└── backup-operations/2026-10-18/    # Private transfer logs and completion receipts
+muguet-android-game-host/                  # Active source worktree and evidence
+muguet-android/                            # Foundation checkout/shared Git store
+.local/state/muguet-android/
+└── backup-operations/2026-10-18/            # Small private receipts/logs/restore note
 ```
 
-The October 18 staging contains the compressed originals, a full-history Git
-bundle, PC recovery kit, phone app-private export, external metadata and installed
-APK. The original-archive container was recovery-checked against all 14 hashes.
-The private cloud copy is now verified as described above. Its `REMOTE-RESTORE.md`
-explains the layout; the local 20 GB originals container was replaced there by
-its 14 unmodified ZIP parts and source metadata. `prepared-overrides/` preserves
-the filtered manifest and DLC list used by the Android selection. The cloud
-source snapshot pins `4188569`; later handoff-only edits are in public Git history.
-Older `BACKUP-STATUS.json` files describe the pre-upload snapshot; the final cloud
-receipt is the completion record. A full reinstall on a new ROM has not been
-tested. The subsequent authorized cleanup removed the large local copies and
-phone installation as described above. Small local recovery kits, source,
-evidence and the private cloud copy remain. The original local staging checksum
-list still describes its historical large tar file; consult the cloud checksum
-manifest when restoring the separately retained ZIPs. Cleanup reports and a
-current restore note are kept in `backup-operations/2026-10-18/`.
+The active checkout is a linked worktree: the foundation checkout still holds
+its shared Git database. Preserve both, or make a fresh independent clone when
+reorganizing them. The old `.local/share/muguet-android` directory no longer
+exists. Its game-data, metadata and recovery-kit copies must be downloaded or
+reconstructed before use; historical paths in old logs describe the earlier layout.
+
+The private cloud copy remains verified. Its `REMOTE-RESTORE.md` explains the
+layout: 14 unmodified original ZIP parts, source metadata, PC recovery kit, Git
+bundles, phone app-private export, external metadata and installed APK.
+`prepared-overrides/` preserves the exact filtered manifest and DLC list used by
+the Android selection. Use the cloud's root `SHA256SUMS.txt` and final receipt;
+the cloud source snapshot pins `4188569`, with subsequent handoff-only edits in
+public Git. Later cleanup/restore notes are under `maintenance/2026-10-18/`.
+Older `BACKUP-STATUS.json` files describe the pre-upload snapshot. The former
+local 20 GB originals tar was replaced in the cloud by the separate original ZIPs.
+A full reinstall on a new ROM has not been tested. The local recovery records
+contain the current restore note and cleanup reports, without game assets.
 No Internet Archive/public game upload occurred.
 
 Private screenshots/reports and the previous task ledger live under ignored
