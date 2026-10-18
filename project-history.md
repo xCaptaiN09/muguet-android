@@ -20,7 +20,7 @@ test. It is still not proof of stable, fully interactive gameplay.
 
 Do not restart the port from scratch. The next work is focused runtime diagnosis,
 review and device testing. The latest changes described here are documentation
-and backup preparation; game bug fixing remains paused until resumed.
+and completion of a private recovery backup; game bug fixing remains paused.
 
 ## Repository and target
 
@@ -139,13 +139,30 @@ and validates them. The build host used is Linux x86-64.
     denies `run-as`. Verified the four files under its save/settings directory
     against the exported copy (2,405 bytes total). This is not proof that a complete
     story-progress save exists. Also retained the installed APK and external logs.
-19. Prepared a complete Git bundle and PC recovery kit locally. **No offsite/cloud
-    backup has been uploaded or remotely recovery-verified, and no original
-    game files were deleted.**
+19. Prepared a complete Git bundle and PC recovery kit locally. These were later
+    included in the private cloud backup described below; no original game files
+    were deleted.
 20. Published the contributor README, this handoff, attribution/license metadata and
     source-only public repository requested by the owner. Set the default branch
     to `feat/android-game-host` without merging into `main`. The scope excludes
     private saves, raw captures, APKs and proprietary game assets.
+21. Completed the owner's private Bacloud recovery backup via a two-core US East
+    Codespace. All 14 original ZIPs were checked against their retained source
+    SHA-256 values after download and by reading the uploaded bytes back. The
+    complete payload contains **39 files / 21,407,262,865 bytes**: 14 original
+    archives, 23 recovery/metadata files and two exact prepared-content overrides.
+    All received full SHA-256 readback verification. `SHA256SUMS.txt` and
+    `REMOTE-VERIFICATION.json` were uploaded and independently checked, followed
+    by a fresh existence/size check of all 39 payloads at 09:16 UTC. The receipt
+    records completion at 09:14 UTC on October 18. The Codespace stop request
+    succeeded; no public asset mirror was created and no local originals deleted.
+
+The first transfer stopped at its configured time limit after 10 verified parts.
+Its `/tmp` worker/log files were cleared when the Codespace stopped. The resumed
+worker used a private directory under persistent `/workspaces`, outside the Git
+checkout, reverified the existing parts and uploaded the remaining four. Preserve
+resumable state in persistent storage for any future transfer. Backup scripts and
+credentials are operational data outside the source repository.
 
 The exact current documentation commit is available from `git log -1`; this file
 does not try to embed its own future commit hash.
@@ -268,14 +285,23 @@ The original developer machine uses these default locations under `$HOME`:
 ├── prepared/full-game-v1/          # Separate Android selection
 ├── compiled/full-game-v1/          # Paired Android AOT code and digest
 ├── worktrees/game-host/            # Existing game-host checkout
-└── offsite-staging/2026-10-18/      # Verified local backup preparation
+├── offsite-staging/2026-10-18/      # Verified local recovery snapshot
+└── backup-operations/2026-10-18/    # Private transfer logs and completion receipts
 ```
 
 The October 18 staging contains the compressed originals, a full-history Git
-    bundle, PC recovery kit, phone app-private export, external metadata and installed
-    APK. The original-archive container was recovery-checked against all 14 hashes.
-**Remote storage and a remote recovery check are still pending.** Retain local
-originals until that is completed. No Internet Archive/public game upload occurred.
+bundle, PC recovery kit, phone app-private export, external metadata and installed
+APK. The original-archive container was recovery-checked against all 14 hashes.
+The private cloud copy is now verified as described above. Its `REMOTE-RESTORE.md`
+explains the layout; the local 20 GB originals container was replaced there by
+its 14 unmodified ZIP parts and source metadata. `prepared-overrides/` preserves
+the filtered manifest and DLC list used by the Android selection. The cloud
+source snapshot pins `4188569`; later handoff-only edits are in public Git history.
+Older `BACKUP-STATUS.json` files describe the pre-upload snapshot; the final cloud
+receipt is the completion record. A full reinstall on a new ROM has not been
+tested. Local copies remain in place; any cleanup must be scoped to the intended
+game data, retaining the source checkout and access to the private backup.
+No Internet Archive/public game upload occurred.
 
 Private screenshots/reports and the previous task ledger live under ignored
 `artifacts/` and `.superpowers/` in that checkout. Public contributors may not have
