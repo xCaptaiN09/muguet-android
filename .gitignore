@@ -28,8 +28,12 @@ keystore.properties
 # Game binaries and assets: never commit these
 /game-files/
 /game-data/
+/game-backup/
+/backups/
+/offsite-staging/
 /game.zip
-game.wasm
-game.cwasm
+*.wasm
+*.cwasm
+playgta5-part-*.zip
 *.rpf
 *.rpf.*

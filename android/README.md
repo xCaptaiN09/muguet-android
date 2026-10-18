@@ -1,9 +1,12 @@
-# Muguet Android diagnostic shell
+# Muguet Android app
 
-This build does not yet run GTA V. It runs synthetic native runtime checks and
-presents a Vulkan test frame; even a passed report does not certify game
-compatibility. Local import is the recommended future asset provider, and a
-future download-as-you-play provider remains possible. Neither is implemented.
+The launcher runs independent synthetic runtime/Vulkan checks and opens an
+experimental local GTA V game host in a separate process. Real open-world output
+has been captured on the target phone; stable play is not yet verified. A passing
+diagnostic report does not certify game compatibility. Compatible game files and
+the pinned Android compiled artifact must be installed separately; see
+[the game-host guide](../docs/GAME_HOST.md) and
+[project history](../project-history.md). An asset download service is not implemented.
 
 From the repository root:
 

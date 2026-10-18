@@ -1,7 +1,9 @@
-# Build and test the Android foundation
+# Build and test Muguet Android
 
-This iteration checks the native runtime and Vulkan path. It does not yet
-launch GTA V, and it does not require game files or root access.
+The app contains independent runtime/Vulkan diagnostics and an experimental local
+game host. Synthetic checks need no game files or root. Real-game setup requires
+separately supplied compatible content; see [GAME_HOST.md](GAME_HOST.md).
+The current evidence and resume point are in [project-history.md](../project-history.md).
 
 ## Build tools
 
@@ -23,7 +25,8 @@ directory. The scripts use an isolated Rust installation under
 ```bash
 source scripts/env.sh
 cargo fmt --all --check
-cargo test --locked -p muguet-android-native
+cargo test --locked --workspace
+python3 -m unittest discover -s scripts -p 'test_*.py'
 cargo run --locked -p muguet-android-native --bin check_runtime
 cargo run --locked -p muguet-android-native --bin check_gpu
 ```
@@ -38,8 +41,10 @@ claim that an Android frame was presented.
 bash scripts/build-apk.sh
 ```
 
-The script copies the debug APK to `artifacts/muguet-android-debug.apk` and
-prints its SHA-256. Build output and APKs are excluded from Git.
+The script builds the native library automatically, copies the debug APK to
+`artifacts/muguet-android-game-debug.apk` and prints its SHA-256. Build output and
+APKs are excluded from Git. Without the separately compiled game artifact, the
+diagnostics remain usable and native game launch is disabled.
 
 For Java report tests and Android lint:
 
@@ -55,7 +60,7 @@ Install the debug APK through Android's package installer, or use ADB from
 the repository root when USB debugging is connected:
 
 ```bash
-adb install -r artifacts/muguet-android-debug.apk
+adb install -r artifacts/muguet-android-game-debug.apk
 ```
 
 Open Muguet Android, run the device checks, and export the JSON report using

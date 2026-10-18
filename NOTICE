@@ -1,0 +1,24 @@
+Muguet Android
+Copyright (C) 2026 xCaptaiN09 and contributors, for original Android project work.
+
+This project is licensed under the GNU General Public License, version 3 or
+(at your option) any later version. See LICENSE for the full license text.
+
+Muguet-derived source retains the copyright and attribution of its author,
+Constantin Clerc (c22dev), and is licensed GPL-3.0-or-later upstream.
+Pinned upstream commit: ddcc54f44ae2a21b8c6e43ec1c925b55b352ffbd
+Upstream: https://github.com/c22dev/muguet
+Provenance and imported-file hashes: third_party/muguet/
+
+Third-party libraries and the Gradle wrapper retain their own licenses and
+copyright notices. Cargo.lock and the Android build files identify dependencies.
+This notice does not relicense those dependencies or grant trademark rights.
+
+GTA V game code, browser-build binaries, proprietary shader packs, data, music
+and other game assets are not included and are not covered by this project's
+GPL grant. The small host-side shader helper remains covered by the source
+license. No permission to redistribute game materials is implied by this
+repository, its source license, an upstream download link or a private backup.
+
+Muguet Android is not affiliated with or endorsed by Rockstar Games, Take-Two
+Interactive or Muguet's author. Product names belong to their respective owners.

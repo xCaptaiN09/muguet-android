@@ -1,5 +1,8 @@
 # Resume checkpoint — October 13, 2026
 
+Historical checkpoint. See [project-history.md](../project-history.md) for the
+current contributor/AI handoff, including October 18 backup and publication work.
+
 Paused at the user's request after the first actual open-world screenshot.
 Private working branch: `feat/android-game-host`; no main merge or public release.
 

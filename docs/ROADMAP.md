@@ -7,7 +7,8 @@ and stability milestones have been demonstrated on the phone.
 
 ## 0. Repository setup
 
-Completed: local repository, private GitHub repository, and project documentation.
+Completed: local repository and project documentation. The GitHub repository was
+initially private; the owner requested public source publication on October 18.
 
 - Initialize the local project and Git history.
 - Create the GitHub repository under `xCaptaiN09`.

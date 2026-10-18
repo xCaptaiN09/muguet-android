@@ -1,94 +1,169 @@
 # Muguet Android
 
-An experimental Android port project based on the approach used by
-[Muguet](https://github.com/c22dev/muguet): run the GTA V browser build locally
-with a WebAssembly runtime and a native graphics backend.
+An experimental Android adaptation of [c22dev's Muguet](https://github.com/c22dev/muguet).
+It runs a compatible GTA V browser build **locally on the phone**, using Wasmtime
+and Vulkan. Gameplay is not streamed from a PC or cloud server.
 
-**Status:** the Android game host renders GTA V's actual open world locally on
-the Realme X7 Max running Android 16/API 36, including the character, city and
-minimap. Mobile touch controls are implemented. Stable gameplay and world input
-are still being verified; earlier builds ended with Android low-memory kills.
-See the [resume checkpoint](docs/SESSION_CHECKPOINT.md) for current work.
+**Current milestone:** real open-world rendering on a Realme X7 Max: the character,
+city and minimap are visible, with a native mobile control overlay. This is an
+early development build. Stable play, movement/vehicle actions and audible sound
+have not yet been systematically verified. Earlier sessions were killed for low
+memory, and world shaders still produce errors.
 
-## End goal
+**Continuing the project? Start with [project-history.md](project-history.md).**
+It is a self-contained handoff for a contributor or AI coding assistant, including
+what worked, what failed, exact build identities and the next investigation steps.
 
-Run GTA V locally on an Android smartphone using the browser-build game code
-and assets, with Muguet as the starting point for the native host. The initial
-device is the Realme X7 Max. The intended result is interactive gameplay with
-touch controls, graphics, and sound, with single-player gameplay available
-offline after the game files are installed.
+## What works, and what remains
 
-The compatibility APK below is a development milestone toward that result.
+| Area | Evidence / current state |
+| --- | --- |
+| Runtime foundation | Actual shared-memory, memory64, atomic and cross-thread checks pass on the target phone. |
+| Graphics foundation | Vulkan test output is visually verified on Mali-G77 MC9. |
+| Real game execution | The browser-build game code executes locally through Android-targeted precompiled Wasmtime code. |
+| Open-world output | A physical-device capture shows the character, city/plaza and minimap. |
+| Touch controls | Floating movement stick, independent camera drag, circular action buttons and vehicle-context mappings are implemented and unit-tested; complete world-action testing is pending. |
+| Audio | AAudio/mixer activity is logged; audible output has not been independently confirmed. |
+| Stability | Unresolved. Earlier foreground game processes were killed with `LOW_MEMORY`; a later timed session exited after reaching the world, and its exact exit reason still needs investigation. |
+| Renderer compatibility | World shaders report parsing/validation failures. Rendering a scene does not certify every shader. |
+| Distribution | Source only. No proprietary game distribution or APK releases are bundled here. |
 
-## First milestone: verified
+See [device validation](docs/DEVICE_VALIDATION.md) for the observations and their
+limits. Presentation counters and startup rates are not sustained gameplay FPS.
 
-Build a compatibility APK that runs a small threaded WebAssembly sample and
-renders through Vulkan using `wgpu`. Record GPU capabilities, runtime results,
-and memory use on the target phone before integrating the game.
+## How it works
 
-This milestone does not require GTA V game files.
+```mermaid
+flowchart LR
+    A[Compatible browser-build files] --> B[PC preparation and Android precompilation]
+    B --> C[Local phone assets and verified compiled code]
+    C --> D[Isolated Android game process]
+    T[Native touch controls] --> D
+    D --> W[Wasmtime]
+    W --> G[wgpu / Vulkan]
+    W --> S[CPAL / AAudio]
+```
 
-On-device results: guest atomics, bounded memory growth, cross-thread
-wait/notify, Vulkan presentation, and JSON report export passed. Rotation and
-background/relaunch checks invalidate the old surface result and allow a fresh
-successful run. The GPU reports **no BC texture support**, so game integration
-will need the texture-decoding fallback.
+- `game-host/` adapts Muguet's runtime imports, file I/O, renderer, audio and input.
+- `native/` exposes the host and independent diagnostic probes through JNI.
+- `android/` contains the Java Views launcher, isolated `:game` activity and Canvas HUD.
+- `scripts/` prepares content, compiles Android game code, builds the APK and installs
+  files over USB. Game reads use local files; no asset server is required.
 
-See [device validation](docs/DEVICE_VALIDATION.md) for evidence and limits, and
-[game-host instructions](docs/GAME_HOST.md) for the experimental game build.
+The current game session ends when its activity is backgrounded. Reopening starts
+a new process; seamless background/resume is not implemented.
 
-## Build and test
+## Target and pinned tools
 
-On a Linux x86-64 host with the documented Android SDK/NDK and JDK 21 installed:
+The only physically tested target is **Realme X7 Max / RMX3031**, Dimensity 1200,
+Mali-G77 MC9, 8 GB RAM, Android 16/API 36. Other devices and ROMs are unverified.
+The app targets ARM64, minimum API 29 and target API 36. Root is not required to
+build, install or run the host.
+
+| Component | Version |
+| --- | --- |
+| Rust | 1.99.0 |
+| Wasmtime | 49.0.2 |
+| wgpu | 30.0.1, Vulkan backend |
+| CPAL | 0.18.2, Android AAudio backend |
+| Java / Gradle / AGP | JDK 21 / Gradle 8.13 / AGP 8.13.2 |
+| Android tools | SDK 36, Build Tools 36.0.0, NDK 28.2.13676358 |
+
+The scripts currently assume a Linux x86-64 development host. See
+[build and test instructions](docs/TESTING.md) for setup and checks.
+
+## Build the diagnostic app
+
+With JDK 21 and the pinned Android tools installed:
 
 ```bash
+git clone --branch feat/android-game-host https://github.com/xCaptaiN09/muguet-android.git
+cd muguet-android
 bash scripts/setup-rust.sh
-bash scripts/build-native.sh
 bash scripts/build-apk.sh
 ```
 
-The current debug APK is written to `artifacts/muguet-android-game-debug.apk`.
-Building a game-capable APK requires the trusted Android compiled-code digest
-described in the game-host instructions. Game code and assets are installed
-separately. The retained foundation APK is 13.28 MiB.
-See [testing instructions](docs/TESTING.md) for tool versions and phone checks.
+Output: `artifacts/muguet-android-game-debug.apk`. APK assembly builds the native
+library automatically. Without a compiled game artifact, the diagnostic checks
+remain available and game launch is disabled; a built APK alone cannot run GTA V.
 
-## Initial target device
+## Run with compatible local game files
 
-- Realme X7 Max
-- MediaTek Dimensity 1200 / Mali-G77 MC9
-- 8 GB RAM
-- Android 16, as reported by the device owner
+The proprietary browser-build executable, shader pack and game data are **not
+provided by this repository**. The small host-side shader helper is part of the
+licensed Muguet-derived source. Only use game files you are entitled to use.
+The host expects the layout below; a normal PC installation is not a drop-in input:
 
-Startup rendering is verified on this device. Gameplay and sustained performance
-remain unverified; the first sessions ended with Android's `LOW_MEMORY` reason.
+```text
+mirror/playgta5.com/
+├── b/<build-id>/game.wasm
+├── b/<build-id>/shaders/index.json
+├── b/<build-id>/shaders/…
+└── data/manifest.json
+    … and the files named by that manifest
+```
 
-## Stack
+The default source location is
+`~/.local/share/muguet-android/game-files/full-game-v1/mirror/playgta5.com/`.
+For that layout:
 
-- Rust for the native host and WebAssembly runtime integration
-- Wasmtime targeting ARM64 Android
-- `wgpu` with the Vulkan backend
-- Android SDK/NDK for application integration and APK packaging
+```bash
+python3 scripts/prepare-game.py
+bash scripts/precompile-game.sh
+bash scripts/build-apk.sh
+bash scripts/install-game.sh
+```
 
-The game host uses Android-targeted precompiled Wasmtime code, Vulkan, CPAL/AAudio,
-native local file reads, and an isolated Android game process.
+Preparation keeps originals separate and filters the optional `env_test` and
+`verityradio` content. Precompilation produces generic Android ARM64 code. The
+build embeds its SHA-256 in the APK; the app verifies its private code copy before
+Wasmtime deserializes it. Never substitute an arbitrary downloaded `.cwasm`.
 
-## Game files
+The measured selected content is **15.65 GB**, plus compiled code and app storage;
+the original archive set is **21.19 GB**. These are different from the small APK.
+Installation reuses matching staged files and normalizes asset directory access.
+See [the complete game-host guide](docs/GAME_HOST.md) before using the adoption
+or repair options. For controls, see [mobile controls](docs/MOBILE_CONTROLS.md).
 
-No game binaries, shaders, or assets are included in this repository. The game
-host uses the browser build's `game.wasm`, `shaders/`, and `data/` files. A standard
-PC installation is not the input format Muguet expects.
+## Contributing
 
-Keep any local game files under `game-files/`, which is ignored by Git.
+The active development branch is `feat/android-game-host`. Useful next work is
+renderer/shader diagnostics, memory profiling and actual world-input testing.
+Start from the [handoff's next steps](project-history.md#where-to-continue).
 
-## Roadmap and upstream
+- Preserve the pinned toolchain, code-digest verification and isolated process
+  lifecycle unless a change explicitly addresses and tests those boundaries.
+- Keep original assets immutable: prepared files may be hardlinked to the originals.
+- Use reproducible logs and screenshots to support device claims. Share sanitized
+  evidence; keep credentials, device identifiers, saves and raw captures private.
+- Keep game files and compiled game artifacts outside Git. The repository's license
+  does not grant rights to Rockstar's game data.
+- Update `project-history.md` when evidence, important fixes or the resume point changes.
 
-See [the roadmap](docs/ROADMAP.md) for milestones and acceptance checks.
-See [the upstream porting audit](docs/PORTING_AUDIT.md) for the source review
-and the role of the browser snapshot repository.
-See [asset delivery](docs/ASSET_DELIVERY.md) for local-file and progressive
-download directions.
+Local checks and their prerequisites are in [TESTING.md](docs/TESTING.md).
+There is no requirement to reproduce game content to work on the synthetic tests.
 
-This is an unofficial community project and is not affiliated with Rockstar
-Games, Take-Two, or Muguet's author. Imported Muguet host code retains its
-GPL-3.0-or-later license and [upstream attribution](third_party/muguet/UPSTREAM.md).
+## License and credits
+
+Project source is licensed under **GPL-3.0-or-later**; see [LICENSE](LICENSE).
+This follows Muguet's upstream license. Copyright/attribution and dependency
+boundaries are recorded in [NOTICE](NOTICE) and
+[Muguet provenance](third_party/muguet/UPSTREAM.md).
+
+Credit to **Constantin Clerc / c22dev** for Muguet and its native host approach.
+The imported source is pinned to
+`ddcc54f44ae2a21b8c6e43ec1c925b55b352ffbd`. Android adaptation and integration are
+maintained by [xCaptaiN09](https://github.com/xCaptaiN09).
+
+This is an unofficial community project, unaffiliated with Rockstar Games,
+Take-Two Interactive or Muguet's author. GTA V and its game assets belong to their
+respective rights holders and are not licensed or distributed with this project.
+
+## Further reading
+
+- [Project history and AI handoff](project-history.md)
+- [Game host and installation](docs/GAME_HOST.md)
+- [Device validation](docs/DEVICE_VALIDATION.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Upstream audit](docs/PORTING_AUDIT.md)
+- [Asset delivery directions](docs/ASSET_DELIVERY.md)
