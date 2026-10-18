@@ -216,6 +216,17 @@ credentials are operational data outside the source repository.
     private on Bacloud. Follow the final snapshot RESTORE.md and PC-CLEARED.json
     for the closing state. A fresh clone/restore needs no old local Git folder.
 
+26. Removed the remaining tools downloaded for Muguet: Android SDK platform 36,
+    Build Tools 36.0.0, NDK 28.2.13676358, the SDK-local platform-tools copy,
+    its package store, Gradle 8.13 and project-generated build/dependency
+    caches. Removed the Android documentation cache downloaded during this
+    project. The older Android CLI, system ADB/Java/Rust/compilers, Internet
+    Archive CLI, Gradle 9.4.1 and existing ADB keys were retained; installation
+    dates/package dependencies showed these predated or were shared beyond
+    Muguet. A future build must reinstall the pinned SDK/NDK/Gradle and the
+    isolated project Rust toolchain. The owner moved the small restore note
+    elsewhere and deleted its local copy; this does not alter cloud backups.
+
 The exact current documentation commit is available from `git log -1`; this file
 does not try to embed its own future commit hash.
 
