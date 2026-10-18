@@ -3,6 +3,11 @@
 Historical checkpoint. See [project-history.md](../project-history.md) for the
 current contributor/AI handoff, including October 18 backup and publication work.
 
+**October 18 cleanup update:** the private cloud backup is verified, the phone app
+is uninstalled and the large local assets/build caches were removed. Source,
+evidence and small recovery kits are retained. Restore content and matching AOT
+code before real-game testing. The October 13 details below are historical.
+
 Paused at the user's request after the first actual open-world screenshot.
 Private working branch: `feat/android-game-host`; no main merge or public release.
 

@@ -20,7 +20,9 @@ test. It is still not proof of stable, fully interactive gameplay.
 
 Do not restart the port from scratch. The next work is focused runtime diagnosis,
 review and device testing. The latest changes described here are documentation
-and completion of a private recovery backup; game bug fixing remains paused.
+and completion of a private recovery backup and local cleanup; game bug fixing
+remains paused. The phone app and local game assets must be restored before
+resuming real-game tests.
 
 ## Repository and target
 
@@ -164,6 +166,18 @@ checkout, reverified the existing parts and uploaded the remaining four. Preserv
 resumable state in persistent storage for any future transfer. Backup scripts and
 credentials are operational data outside the source repository.
 
+22. After the owner authorized PC/phone cleanup, checked all six current private
+    app files and the installed APK against the backed-up hashes: all matched,
+    with no extra private files. Uninstalled `dev.xcaptain.muguet` and verified
+    that its internal, device-protected, external-data and OBB paths were absent.
+    Removed the PC's original ZIP directory, extracted mirror, prepared content,
+    compiled-game directory, large originals tar container and build caches in
+    both project checkouts. Measured filesystem space increased by
+    **84,499,468,288 bytes on PC** and **16,232,599,552 bytes on the phone**.
+    The source checkouts, Git history, evidence, original download metadata and
+    small PC/phone recovery kits remain available. The private cloud backup is
+    the retained complete original asset copy; restore it before game testing.
+
 The exact current documentation commit is available from `git log -1`; this file
 does not try to embed its own future commit hash.
 
@@ -233,7 +247,10 @@ requested arguments, not proof of settings honored or a memory fix.
    and the relevant source. Preserve existing work. Do not redispatch/reimplement
    the completed runtime foundation, host import or Android staging integration.
 2. If a ROM was changed, repeat the synthetic runtime/Vulkan checks and collect
-   current GPU capabilities. Prior results belong to the old tested ROM.
+   current GPU capabilities. Prior results belong to the old tested ROM. The
+   October 18 cleanup removed the phone app and assets: reinstall the diagnostic
+   APK first, then restore/reconstruct content and matching AOT code from the
+   retained recovery kit/private cloud backup before launching a real session.
 3. Check the two HUD fixes in `205b05e..fbbc67e`: readable default/pressed/selected
    colors over bright backgrounds, and the actual shared inset-aware Info geometry.
    Focused tests cover asymmetric safe widths 495/496/497 dp. Review then install
@@ -276,7 +293,9 @@ These are historical results, not a fresh test claim for an arbitrary checkout.
 
 ## Maintainer recovery data outside Git
 
-The original developer machine uses these default locations under `$HOME`:
+The original developer machine uses these default locations under `$HOME`.
+The large game-data directories shown below were removed after backup; their
+names describe restoration destinations, not currently populated folders.
 
 ```text
 .local/share/muguet-android/
@@ -299,8 +318,12 @@ the filtered manifest and DLC list used by the Android selection. The cloud
 source snapshot pins `4188569`; later handoff-only edits are in public Git history.
 Older `BACKUP-STATUS.json` files describe the pre-upload snapshot; the final cloud
 receipt is the completion record. A full reinstall on a new ROM has not been
-tested. Local copies remain in place; any cleanup must be scoped to the intended
-game data, retaining the source checkout and access to the private backup.
+tested. The subsequent authorized cleanup removed the large local copies and
+phone installation as described above. Small local recovery kits, source,
+evidence and the private cloud copy remain. The original local staging checksum
+list still describes its historical large tar file; consult the cloud checksum
+manifest when restoring the separately retained ZIPs. Cleanup reports and a
+current restore note are kept in `backup-operations/2026-10-18/`.
 No Internet Archive/public game upload occurred.
 
 Private screenshots/reports and the previous task ledger live under ignored
